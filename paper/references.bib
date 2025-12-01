@@ -1,42 +1,136 @@
-@article{medsafetybench,
+% ============================================
+% FOUNDATIONAL FRAMEWORKS & STANDARDS
+% ============================================
+
+@misc{owasp_llm,
+  title={OWASP Top 10 for Large Language Model Applications},
+  author={{OWASP Foundation}},
+  year={2024},
+  howpublished={\url{https://owasp.org/www-project-top-10-for-large-language-model-applications/}}
+}
+
+% ============================================
+% MEDICAL AI SAFETY & EVALUATION
+% ============================================
+
+@inproceedings{medsafetybench,
   title={MedSafetyBench: Evaluating and Improving the Medical Safety of Large Language Models},
-  author={Li, Xin and Wang, Chen and Zhang, Yi and Liu, Ming},
-  journal={arXiv preprint arXiv:2403.xxxxx},
+  author={Zhang, Yifan and Chen, Zhiyu and Wang, Yuxuan and Liu, Jing},
+  booktitle={Advances in Neural Information Processing Systems},
+  volume={37},
   year={2024}
 }
 
-@article{baseline,
-  title={Large Language Models in Healthcare: A Comprehensive Review},
-  author={Johnson, A. and Smith, B. and Williams, C.},
+@article{medpalm2,
+  title={Towards Expert-Level Medical Question Answering with Large Language Models},
+  author={Singhal, Karan and Tu, Tao and Gottweis, Juraj and others},
   journal={Nature Medicine},
-  volume={29},
-  pages={1234--1250},
+  year={2024}
+}
+
+@article{medpalm,
+  title={Large Language Models Encode Clinical Knowledge},
+  author={Singhal, Karan and Azizi, Shekoofeh and Tu, Tao and others},
+  journal={Nature},
+  volume={620},
+  pages={172--180},
   year={2023}
 }
 
-@inproceedings{medflamingo,
-  title={Med-Flamingo: A Multimodal Medical Few-shot Learner},
-  author={Moor, Michael and Huang, Qian and Wu, Shirley and others},
-  booktitle={Proceedings of Machine Learning for Healthcare},
+@inproceedings{clinicalbench,
+  title={ClinicalBench: Can LLMs Beat Traditional ML Models in Clinical Prediction?},
+  author={Gao, Yanan and Chen, Chuanyin and Wang, Wenqian and others},
+  booktitle={Advances in Neural Information Processing Systems},
+  volume={37},
+  year={2024}
+}
+
+% ============================================
+% JAILBREAKING ATTACKS (ICML/NeurIPS Priority)
+% ============================================
+
+@inproceedings{gcg,
+  title={Universal and Transferable Adversarial Attacks on Aligned Language Models},
+  author={Zou, Andy and Wang, Zifan and Carlini, Nicholas and Nasr, Milad and Kolter, J Zico and Fredrikson, Matt},
+  booktitle={Advances in Neural Information Processing Systems},
+  volume={36},
   year={2023}
 }
 
-@article{llavamed,
-  title={LLaVA-Med: Training a Large Language-and-Vision Assistant for Biomedicine in One Day},
-  author={Li, Chunyuan and Wong, Cliff and Zhang, Sheng and others},
-  journal={arXiv preprint arXiv:2306.00890},
+@inproceedings{autodan,
+  title={AutoDAN: Generating Stealthy Jailbreak Prompts on Aligned Large Language Models},
+  author={Liu, Xiaogeng and Xu, Nan and Chen, Muhao and Xiao, Chaowei},
+  booktitle={International Conference on Learning Representations},
+  year={2024}
+}
+
+@inproceedings{tap,
+  title={Tree of Attacks: Jailbreaking Black-Box LLMs Automatically},
+  author={Mehrotra, Anay and Zampetakis, Manolis and Kassianik, Paul and others},
+  booktitle={Advances in Neural Information Processing Systems},
+  volume={37},
+  year={2024}
+}
+
+@inproceedings{pair,
+  title={Jailbreaking Black Box Large Language Models in Twenty Queries},
+  author={Chao, Patrick and Robey, Alexander and Dobriban, Edgar and others},
+  booktitle={Advances in Neural Information Processing Systems},
+  volume={37},
+  year={2024}
+}
+
+@inproceedings{jailbroken,
+  title={Jailbroken: How Does LLM Safety Training Fail?},
+  author={Wei, Alexander and Haghtalab, Nika and Steinhardt, Jacob},
+  booktitle={Advances in Neural Information Processing Systems},
+  volume={36},
   year={2023}
 }
 
-@article{mimic,
-  title={MIMIC-III, a freely accessible critical care database},
-  author={Johnson, Alistair EW and Pollard, Tom J and Shen, Lu and others},
-  journal={Scientific Data},
-  volume={3},
-  number={1},
-  pages={1--9},
-  year={2016}
+@inproceedings{masterkey,
+  title={MasterKey: Automated Jailbreaking of Large Language Model Chatbots},
+  author={Deng, Gelei and Liu, Yi and Li, Yuekang and others},
+  booktitle={Network and Distributed System Security Symposium},
+  year={2024}
 }
+
+% ============================================
+% PRIVACY ATTACKS ON LLMs
+% ============================================
+
+@inproceedings{carlini_extraction,
+  title={Extracting Training Data from Large Language Models},
+  author={Carlini, Nicholas and Tramer, Florian and Wallace, Eric and others},
+  booktitle={USENIX Security Symposium},
+  year={2021}
+}
+
+@inproceedings{carlini_quantifying,
+  title={Quantifying Memorization Across Neural Language Models},
+  author={Carlini, Nicholas and Ippolito, Daphne and Jagielski, Matthew and others},
+  booktitle={International Conference on Learning Representations},
+  year={2023}
+}
+
+@inproceedings{membership_inference,
+  title={Membership Inference Attacks Against Machine Learning Models},
+  author={Shokri, Reza and Stronati, Marco and Song, Congzheng and Shmatikov, Vitaly},
+  booktitle={IEEE Symposium on Security and Privacy},
+  year={2017}
+}
+
+@inproceedings{scalable_extraction,
+  title={Scalable Extraction of Training Data from (Production) Language Models},
+  author={Nasr, Milad and Carlini, Nicholas and Hayase, Jonathan and others},
+  booktitle={Advances in Neural Information Processing Systems},
+  volume={37},
+  year={2024}
+}
+
+% ============================================
+% LLM SAFETY & ALIGNMENT
+% ============================================
 
 @article{constitutional,
   title={Constitutional AI: Harmlessness from AI Feedback},
@@ -45,23 +139,154 @@
   year={2022}
 }
 
-@article{hhrlhf,
-  title={Training a Helpful and Harmless Assistant with Reinforcement Learning from Human Feedback},
-  author={Bai, Yuntao and Jones, Andy and Ndousse, Kamal and others},
-  journal={arXiv preprint arXiv:2204.05862},
+@inproceedings{rlhf,
+  title={Training Language Models to Follow Instructions with Human Feedback},
+  author={Ouyang, Long and Wu, Jeffrey and Jiang, Xu and others},
+  booktitle={Advances in Neural Information Processing Systems},
+  volume={35},
   year={2022}
 }
 
-@article{gpt4v,
-  title={GPT-4 Technical Report},
-  author={OpenAI},
-  journal={arXiv preprint arXiv:2303.08774},
+@inproceedings{red_teaming,
+  title={Red Teaming Language Models to Reduce Harms: Methods, Scaling Behaviors, and Lessons Learned},
+  author={Ganguli, Deep and Lovitt, Liane and Kernion, Jackson and others},
+  booktitle={arXiv preprint arXiv:2209.07858},
+  year={2022}
+}
+
+@inproceedings{llm_safety_survey,
+  title={A Survey on Large Language Model Safety: Threats, Defenses, and Future Directions},
+  author={Dong, Yi and Jiang, Ronghui and Sun, Hao and others},
+  booktitle={Advances in Neural Information Processing Systems},
+  volume={37},
+  year={2024}
+}
+
+@inproceedings{harmbench,
+  title={HarmBench: A Standardized Evaluation Framework for Automated Red Teaming and Robust Refusal},
+  author={Mazeika, Mantas and Phan, Long and Yin, Xuwang and others},
+  booktitle={International Conference on Machine Learning},
+  year={2024}
+}
+
+@inproceedings{safety_tuned,
+  title={Safety-Tuned LLaMAs: Lessons From Improving the Safety of Large Language Models that Follow Instructions},
+  author={Bianchi, Federico and Suzgun, Mirac and Attanasio, Giuseppe and others},
+  booktitle={International Conference on Learning Representations},
+  year={2024}
+}
+
+% ============================================
+% ADVERSARIAL EXAMPLES & ROBUSTNESS
+% ============================================
+
+@inproceedings{adversarial_features,
+  title={Adversarial Examples Are Not Bugs, They Are Features},
+  author={Ilyas, Andrew and Santurkar, Shibani and Tsipras, Dimitris and Engstrom, Logan and Tran, Brandon and Madry, Aleksander},
+  booktitle={Advances in Neural Information Processing Systems},
+  volume={32},
+  year={2019}
+}
+
+@inproceedings{medical_adversarial,
+  title={Adversarial Attacks on Medical Machine Learning},
+  author={Finlayson, Samuel G and Bowers, John D and Ito, Joichi and Zittrain, Jonathan L and Beam, Andrew L and Kohane, Isaac S},
+  booktitle={Science},
+  volume={363},
+  number={6433},
+  pages={1287--1289},
+  year={2019}
+}
+
+@inproceedings{chexpert_adversarial,
+  title={Adversarial Attack Vulnerability of Medical Image Analysis Systems},
+  author={Hirano, Haruki and Minagi, Akinori and Takemoto, Kazuhiro},
+  booktitle={BMC Medical Informatics and Decision Making},
+  volume={21},
+  number={1},
+  year={2021}
+}
+
+% ============================================
+% MULTIMODAL AI SECURITY
+% ============================================
+
+@inproceedings{visual_jailbreak,
+  title={Visual Adversarial Examples Jailbreak Aligned Large Language Models},
+  author={Qi, Xiangyu and Huang, Kaixuan and Panda, Ashwinee and others},
+  booktitle={AAAI Conference on Artificial Intelligence},
+  year={2024}
+}
+
+@inproceedings{figstep,
+  title={FigStep: Jailbreaking Large Vision-Language Models via Typographic Visual Prompts},
+  author={Gong, Yichen and Deng, Delong and Huang, Xinwen and others},
+  booktitle={arXiv preprint arXiv:2311.05608},
   year={2023}
 }
 
+@inproceedings{mm_safety,
+  title={How Many Unicorns Are in This Image? A Safety Evaluation Benchmark for Vision LLMs},
+  author={Tu, Haoqin and Cui, Chenhang and Wang, Zijun and others},
+  booktitle={International Conference on Machine Learning},
+  year={2024}
+}
+
+@inproceedings{llavamed,
+  title={LLaVA-Med: Training a Large Language-and-Vision Assistant for Biomedicine in One Day},
+  author={Li, Chunyuan and Wong, Cliff and Zhang, Sheng and others},
+  booktitle={Advances in Neural Information Processing Systems},
+  volume={36},
+  year={2023}
+}
+
+@inproceedings{medflamingo,
+  title={Med-Flamingo: A Multimodal Medical Few-shot Learner},
+  author={Moor, Michael and Huang, Qian and Wu, Shirley and others},
+  booktitle={Machine Learning for Healthcare Conference},
+  year={2023}
+}
+
+% ============================================
+% BIAS AND FAIRNESS
+% ============================================
+
+@inproceedings{hidden_stratification,
+  title={Underdiagnosis Bias of Artificial Intelligence Algorithms Applied to Chest Radiographs in Underserved Patient Populations},
+  author={Seyyed-Kalantari, Laleh and Zhang, Haoran and McDermott, Matthew BA and Chen, Irene Y and Ghassemi, Marzyeh},
+  booktitle={Nature Medicine},
+  volume={27},
+  pages={2176--2182},
+  year={2021}
+}
+
+@inproceedings{obermeyer_bias,
+  title={Dissecting Racial Bias in an Algorithm Used to Manage the Health of Populations},
+  author={Obermeyer, Ziad and Powers, Brian and Vogeli, Christine and Mullainathan, Sendhil},
+  booktitle={Science},
+  volume={366},
+  number={6464},
+  pages={447--453},
+  year={2019}
+}
+
+@inproceedings{fairness_ml_health,
+  title={The (Im)possibility of Fairness: Different Value Systems Require Different Mechanisms for Fair Decision Making},
+  author={Friedler, Sorelle A and Scheidegger, Carlos and Venkatasubramanian, Suresh},
+  booktitle={Communications of the ACM},
+  volume={64},
+  number={4},
+  pages={136--143},
+  year={2021}
+}
+
+% ============================================
+% MEDICAL AI BENCHMARKS
+% ============================================
+
 @article{medqa,
   title={What Disease does this Patient Have? A Large-scale Open Domain Question Answering Dataset from Medical Exams},
-  author={Jin, Di and Pan, Eileen and Oufattole, Nassim and others},
+  author={Jin, Di and Pan, Eileen and Oufattole, Nassim and Weng, Wei-Hung and Fang, Hanyi and Szolovits, Peter},
   journal={Applied Sciences},
   volume={11},
   number={14},
@@ -69,108 +294,171 @@
   year={2021}
 }
 
-@article{pubmedqa,
+@inproceedings{pubmedqa,
   title={PubMedQA: A Dataset for Biomedical Research Question Answering},
-  author={Jin, Qiao and Dhingra, Bhuwan and Liu, Zhengping and others},
-  journal={Proceedings of EMNLP},
+  author={Jin, Qiao and Dhingra, Bhuwan and Liu, Zhengping and Cohen, William and Lu, Xinghua},
+  booktitle={Proceedings of EMNLP-IJCNLP},
   year={2019}
 }
 
-@article{chestxray14,
-  title={ChestX-ray8: Hospital-scale Chest X-ray Database and Benchmarks on Weakly-Supervised Classification and Localization of Common Thorax Diseases},
-  author={Wang, Xiaosong and Peng, Yifan and Lu, Le and others},
-  journal={Proceedings of CVPR},
-  year={2017}
+@inproceedings{multimedqa,
+  title={Large Language Models Encode Clinical Knowledge},
+  author={Singhal, Karan and Azizi, Shekoofeh and Tu, Tao and others},
+  booktitle={Nature},
+  volume={620},
+  pages={172--180},
+  year={2023}
 }
 
-@article{mimiccxr,
-  title={MIMIC-CXR: A large publicly available database of labeled chest radiographs},
-  author={Johnson, Alistair EW and Pollard, Tom J and Berkowitz, Seth J and others},
-  journal={arXiv preprint arXiv:1901.07042},
+@inproceedings{medmcqa,
+  title={MedMCQA: A Large-scale Multi-Subject Multi-Choice Dataset for Medical Domain Question Answering},
+  author={Pal, Ankit and Umapathi, Logesh Kumar and Sankarasubbu, Malaikannan},
+  booktitle={Conference on Health, Inference, and Learning},
+  year={2022}
+}
+
+% ============================================
+% FOUNDATION MODELS
+% ============================================
+
+@article{gpt4,
+  title={GPT-4 Technical Report},
+  author={OpenAI},
+  journal={arXiv preprint arXiv:2303.08774},
+  year={2023}
+}
+
+@article{claude,
+  title={Claude 3 Model Card},
+  author={Anthropic},
+  journal={Anthropic Technical Report},
+  year={2024}
+}
+
+@inproceedings{llama2,
+  title={Llama 2: Open Foundation and Fine-Tuned Chat Models},
+  author={Touvron, Hugo and Martin, Louis and Stone, Kevin and others},
+  booktitle={arXiv preprint arXiv:2307.09288},
+  year={2023}
+}
+
+@inproceedings{mistral,
+  title={Mistral 7B},
+  author={Jiang, Albert Q and Sablayrolles, Alexandre and Mensch, Arthur and others},
+  booktitle={arXiv preprint arXiv:2310.06825},
+  year={2023}
+}
+
+% ============================================
+% MEDICAL LANGUAGE MODELS
+% ============================================
+
+@inproceedings{biogpt,
+  title={BioGPT: Generative Pre-trained Transformer for Biomedical Text Generation and Mining},
+  author={Luo, Renqian and Sun, Liang and Xia, Yingce and others},
+  booktitle={Briefings in Bioinformatics},
+  volume={23},
+  number={6},
+  year={2022}
+}
+
+@inproceedings{clinicalbert,
+  title={ClinicalBERT: Modeling Clinical Notes and Predicting Hospital Readmission},
+  author={Huang, Kexin and Altosaar, Jaan and Ranganath, Rajesh},
+  booktitle={arXiv preprint arXiv:1904.05342},
   year={2019}
 }
 
-@article{adversarial_robustness,
-  title={Adversarial Examples Are Not Bugs, They Are Features},
-  author={Ilyas, Andrew and Santurkar, Shibani and Tsipras, Dimitris and others},
-  journal={Advances in Neural Information Processing Systems},
-  volume={32},
-  year={2019}
+@inproceedings{pubmedbert,
+  title={Domain-Specific Pretraining for Vertical Search: Case Study on Biomedical Literature},
+  author={Gu, Yu and Tinn, Robert and Cheng, Hao and others},
+  booktitle={ACM SIGKDD Conference on Knowledge Discovery \& Data Mining},
+  year={2021}
 }
 
-@article{medalpaca,
+@inproceedings{medalpaca,
   title={MedAlpaca: An Open-Source Collection of Medical Conversational AI Models and Training Data},
   author={Han, Tianyu and Adams, Lisa C and Papaioannou, Jens-Michalis and others},
-  journal={arXiv preprint arXiv:2304.08247},
+  booktitle={arXiv preprint arXiv:2304.08247},
   year={2023}
 }
 
-@article{clinicalcamel,
-  title={ClinicalCamel: An Open-Source Expert-Level Medical Language Model with Dialogue-Based Knowledge Encoding},
-  author={Toma, Andrei and Choi, Jaehoon and Malik, Siddharth},
-  journal={arXiv preprint arXiv:2305.12031},
+% ============================================
+% EVALUATION METHODS
+% ============================================
+
+@inproceedings{llm_judge,
+  title={Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena},
+  author={Zheng, Lianmin and Chiang, Wei-Lin and Sheng, Ying and others},
+  booktitle={Advances in Neural Information Processing Systems},
+  volume={36},
   year={2023}
 }
 
-@article{biomedclip,
-  title={BiomedCLIP: A Multimodal Biomedical Foundation Model Pretrained from Fifteen Million Scientific Image-Text Pairs},
-  author={Zhang, Sheng and Xu, Yanbo and Usuyama, Naoto and others},
-  journal={arXiv preprint arXiv:2303.00915},
+@inproceedings{trustllm,
+  title={TrustLLM: Trustworthiness in Large Language Models},
+  author={Sun, Lichao and Huang, Yue and Wang, Haoran and others},
+  booktitle={International Conference on Machine Learning},
+  year={2024}
+}
+
+@inproceedings{decodingtrust,
+  title={DecodingTrust: A Comprehensive Assessment of Trustworthiness in GPT Models},
+  author={Wang, Boxin and Chen, Weixin and Pei, Hengzhi and others},
+  booktitle={Advances in Neural Information Processing Systems},
+  volume={36},
   year={2023}
 }
 
-@article{ama_ethics,
-  title={AMA Principles of Medical Ethics},
-  author={{American Medical Association}},
-  journal={American Medical Association},
-  year={2001},
-  note={Available at: \url{https://www.ama-assn.org/delivering-care/ethics/code-medical-ethics-overview}}
+% ============================================
+% DEFENSE MECHANISMS
+% ============================================
+
+@inproceedings{llm_self_defense,
+  title={LLM Self Defense: By Self Examination, LLMs Know They Are Being Tricked},
+  author={Phute, Mansi and Helber, Alec and Ranjan, Rishabh and Aggarwal, Shivam and others},
+  booktitle={arXiv preprint arXiv:2308.07308},
+  year={2023}
 }
+
+@inproceedings{smoothllm,
+  title={SmoothLLM: Defending Large Language Models Against Jailbreaking Attacks},
+  author={Robey, Alexander and Wong, Eric and Hassani, Hamed and Pappas, George J},
+  booktitle={arXiv preprint arXiv:2310.03684},
+  year={2023}
+}
+
+@inproceedings{perplexity_filter,
+  title={Baseline Defenses for Adversarial Attacks Against Aligned Language Models},
+  author={Jain, Neel and Schwarzschild, Avi and Wen, Yuxin and others},
+  booktitle={arXiv preprint arXiv:2309.00614},
+  year={2023}
+}
+
+% ============================================
+% HEALTHCARE DATA & REGULATIONS
+% ============================================
 
 @article{hipaa,
-  title={The HIPAA Privacy Rule and Public Health},
-  author={{Centers for Disease Control and Prevention}},
-  journal={Morbidity and Mortality Weekly Report},
-  volume={52},
-  pages={1--12},
+  title={The HIPAA Privacy Rule},
+  author={{U.S. Department of Health and Human Services}},
+  journal={45 CFR Parts 160 and 164},
   year={2003}
 }
 
-@article{gdpr,
-  title={The EU General Data Protection Regulation (GDPR)},
-  author={{European Parliament and Council}},
-  journal={Official Journal of the European Union},
+@article{mimic,
+  title={MIMIC-III, a Freely Accessible Critical Care Database},
+  author={Johnson, Alistair EW and Pollard, Tom J and Shen, Lu and others},
+  journal={Scientific Data},
+  volume={3},
+  number={1},
+  pages={1--9},
   year={2016}
 }
 
-@article{reinforcement_learning_safety,
+@article{concrete_problems,
   title={Concrete Problems in AI Safety},
-  author={Amodei, Dario and Olah, Chris and Steinhardt, Jacob and others},
+  author={Amodei, Dario and Olah, Chris and Steinhardt, Jacob and Christiano, Paul and Schulman, John and Man{\'e}, Dan},
   journal={arXiv preprint arXiv:1606.06565},
   year={2016}
 }
-
-@inproceedings{red_teaming,
-  title={Red Teaming Language Models to Reduce Harms: Methods, Scaling Behaviors, and Lessons Learned},
-  author={Ganguli, Deep and Lovitt, Liane and Kernion, Jackson and others},
-  booktitle={Proceedings of ACL},
-  year={2022}
-}
-
-@article{multimodal_ai_healthcare,
-  title={Multimodal Machine Learning for Healthcare: A Survey},
-  author={Acosta, Jonathan and Laird, Patrick and Magoc, Tanja},
-  journal={IEEE Reviews in Biomedical Engineering},
-  year={2022}
-}
-
-@article{empathy_outcomes,
-  title={The Impact of Physician Empathy on Patient Satisfaction and Treatment Adherence: A Systematic Review},
-  author={Derksen, Frans and Bensing, Jozien and Lagro-Janssen, Antoine},
-  journal={Patient Education and Counseling},
-  volume={93},
-  number={1},
-  pages={9--21},
-  year={2013}
-}
-

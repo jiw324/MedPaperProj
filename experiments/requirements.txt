@@ -1,0 +1,29 @@
+# Medical AI Security Evaluation Framework
+# Python 3.8+ required
+
+# Core ML Libraries
+transformers>=4.35.0
+torch>=2.0.0
+
+# Data Processing
+numpy>=1.24.0
+pandas>=2.0.0
+
+# Statistical Analysis
+scipy>=1.10.0
+statsmodels>=0.14.0
+
+# Visualization
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Utilities
+tqdm>=4.65.0
+python-dateutil>=2.8.0
+
+# JSON handling (included in Python stdlib, listed for clarity)
+# json - built-in
+
+# Optional: For faster tokenization
+# tokenizers>=0.13.0
+
