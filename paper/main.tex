@@ -1,194 +1,260 @@
-\documentclass{article}
+\documentclass[11pt,letterpaper]{article}
 
-% Recommended packages
+% arXiv-compatible packages
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
 \usepackage{microtype}
-\usepackage{graphicx}
-\usepackage{booktabs}
-\usepackage{hyperref}
-
-% ICML 2026 style (includes natbib)
-\usepackage{icml2026}
-
 \usepackage{amsmath}
 \usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{natbib}
+\usepackage{authblk}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+% hyperref should be loaded last to avoid option clashes
+\usepackage{hyperref}
+
+\title{A Practical Framework for Evaluating Medical AI Security: 
+Reproducible Assessment of Jailbreaking and Privacy Vulnerabilities Across Clinical Specialties}
+
+\author[1]{Jinghao Wang}
+\author[1]{Ping Zhang}
+\author[1]{Carter Yagemann}
+\affil[1]{The Ohio State University}
+
+\date{}
 
 \begin{document}
 
-\twocolumn[
-\icmltitle{A Practical Framework for Evaluating Medical AI Security: Baseline Assessment of Jailbreaking and Privacy Vulnerabilities}
-
-\begin{icmlauthorlist}
-\icmlauthor{Your Name}{inst1}
-\end{icmlauthorlist}
-
-\icmlaffiliation{inst1}{Your Institution, Department, Location}
-\icmlcorrespondingauthor{Your Name}{your.email@domain.com}
-
-\icmlkeywords{Medical AI, Adversarial Attacks, AI Safety, Privacy, Jailbreaking, LLM Security}
-
-\vskip 0.3in
-]
+\maketitle
 
 \begin{abstract}
-
-Medical Large Language Models (LLMs) are increasingly used for clinical decision support, yet their robustness to adversarial misuse and privacy leakage remains poorly understood. Existing evaluations emphasize diagnostic accuracy or benign safety criteria, leaving critical vulnerabilities—such as jailbreaking attacks and protected health information (PHI) extraction—largely unmeasured. We present a practical and fully reproducible framework for evaluating medical AI security under realistic resource constraints. Our benchmark consists of thirty adversarial scenarios spanning role-playing, authority impersonation, multi-turn escalation, and PHI-targeted extraction, all constructed using synthetic patient records requiring no IRB approval. Using GPT-2 and DistilGPT-2 as accessible testbeds, we assess attack success rates, PHI leakage patterns, and qualitative failure modes. Our results establish baseline vulnerabilities for small open-source models and demonstrate that meaningful security assessment can be conducted without GPUs, proprietary data, or commercial APIs. This framework provides a foundation for future comparative studies of medical-specialist models and defense mechanisms, advancing the broader goal of ensuring safe and trustworthy medical AI systems.
-
+Medical Large Language Models (LLMs) are increasingly deployed for clinical decision support across diverse specialties, yet systematic evaluation of their robustness to adversarial misuse and privacy leakage remains inaccessible to most researchers. Existing security benchmarks require GPU clusters, commercial API access, or protected health data—barriers that limit community participation in this critical research area. We propose a practical, fully reproducible framework for evaluating medical AI security under realistic resource constraints. Our framework design covers multiple medical specialties stratified by clinical risk—from high-risk domains such as emergency medicine and psychiatry to general practice—addressing jailbreaking attacks (role-playing, authority impersonation, multi-turn manipulation) and privacy extraction attacks. All evaluation utilizes synthetic patient records requiring no IRB approval. The framework is designed to run entirely on consumer CPU hardware using freely available models, eliminating cost barriers. We present the framework specification including threat models, data generation methodology, evaluation protocols, and scoring rubrics. This proposal establishes a foundation for comparative security assessment of medical-specialist models and defense mechanisms, advancing the broader goal of ensuring safe and trustworthy medical AI systems.
 \end{abstract}
 
-\printAffiliationsAndNotice{}
+\noindent\textbf{Keywords:} Medical AI, Adversarial Attacks, AI Safety, Privacy, Jailbreaking, LLM Security, Reproducible Research, Clinical Specialties
 
 %% ============================================
-%% SECTION 1: PROBLEM STATEMENT
+%% SECTION 1: INTRODUCTION
+%% Addresses: Q1 (What is the problem?) + Q2 (Why important?)
 %% ============================================
-\section{Problem Statement}
+\section{Introduction}
 
-\subsection{The Security Challenge in Medical AI}
+Large Language Models are rapidly transforming healthcare across all clinical specialties~\citep{medpalm2,medpalm}. GPT-4 achieves expert-level performance on medical licensing examinations~\citep{gpt4}, and AI assistants increasingly provide clinical decision support in domains ranging from emergency medicine to psychiatry. However, these systems face critical security vulnerabilities that directly threaten patient safety~\citep{llm_safety_survey,concrete_problems}.
 
-Large Language Models are rapidly transforming healthcare~\cite{medpalm2,medpalm}. GPT-4 achieves expert-level performance on medical examinations~\cite{gpt4}, and AI assistants increasingly provide clinical decision support. However, medical AI systems face critical security vulnerabilities that directly threaten patient safety~\cite{llm_safety_survey,concrete_problems}.
+% Q1: What is the problem?
+\paragraph{The Problem.} Medical AI systems face two critical security vulnerabilities. First, \textit{jailbreaking attacks} bypass safety mechanisms through adversarial prompts, causing models to generate dangerous treatment recommendations or lethal drug information~\citep{jailbroken,gcg}. \citet{medsafetybench} demonstrated that medical-specialist models paradoxically show higher compliance with harmful requests than general models—domain knowledge amplifies rather than mitigates security risks. Second, \textit{privacy extraction attacks} exploit the tendency of language models to memorize and regurgitate training data~\citep{carlini_extraction}, creating HIPAA violations when models leak protected health information~\citep{hipaa}.
 
-\subsection{Foundational Work Guiding Problem Selection}
+Despite these critical risks, systematic security evaluation remains inaccessible to most researchers. Existing benchmarks such as HarmBench~\citep{harmbench} and DecodingTrust~\citep{decodingtrust} require GPU clusters, commercial API budgets, or access to protected health information. This accessibility barrier conflicts with the principle that security research benefits from broad participation~\citep{red_teaming}.
 
-Our selection of security threats is guided by established taxonomies and foundational research in AI safety. The seminal work by Amodei et al.~\cite{concrete_problems} identified five concrete problems in AI safety, establishing that systems optimizing for objectives may produce unintended harmful behaviors. This foundational framework motivates our focus on how medical AI can be manipulated to cause harm.
+% Q2: Why is this important?
+\paragraph{Why This Matters.} The consequences of medical AI security failures extend beyond typical AI risks to direct patient harm. Jailbreaking attacks that elicit dangerous medical advice can cause patient injury or death~\citep{medical_adversarial}. HIPAA violations carry penalties up to \$1.5 million per incident~\citep{hipaa}. Critically, risks are not uniform across medical domains: emergency medicine involves time-critical decisions where errors can be immediately fatal, psychiatry deals with vulnerable populations, and pharmacology presents risks of dangerous drug interactions~\citep{hidden_stratification,obermeyer_bias}. A comprehensive security framework must therefore evaluate vulnerabilities across the spectrum of clinical practice.
 
-For jailbreaking vulnerabilities, we build on Wei et al.'s foundational analysis~\cite{jailbroken} which systematically categorized why safety training fails under adversarial pressure. Their work demonstrated that competing objectives between helpfulness and safety create exploitable tensions, and that pretrained knowledge conflicts with safety training. The GCG attack by Zou et al.~\cite{gcg} further established that universal adversarial suffixes transfer across models, revealing fundamental weaknesses in current alignment approaches. HarmBench~\cite{harmbench} subsequently provided standardized evaluation protocols that we adapt for medical contexts.
-
-For privacy extraction, Carlini et al.'s foundational work~\cite{carlini_extraction} proved that language models memorize and can regurgitate training data verbatim. Their follow-up quantification study~\cite{carlini_quantifying} demonstrated that memorization scales with model size and data repetition. This poses acute risks for medical AI: models trained on clinical notes may leak protected health information, creating HIPAA violations~\cite{hipaa}. The OWASP Top 10 for LLM Applications~\cite{owasp_llm} identifies ``Sensitive Information Disclosure'' as a critical vulnerability class, validating our focus.
-
-MedSafetyBench~\cite{medsafetybench} provides domain-specific grounding, demonstrating that medical-specialist models paradoxically show higher compliance with harmful requests than general models. This counterintuitive finding suggests that medical domain knowledge amplifies rather than mitigates security risks, making our evaluation essential.
-
-\subsection{Why These Problems Are Most Critical}
-
-We prioritize jailbreaking and privacy extraction based on three criteria derived from foundational risk frameworks. First, \textbf{severity of harm}: the FDA's guidance on AI/ML-based medical devices emphasizes that patient safety is paramount, and jailbreaking attacks that elicit dangerous medical advice can directly cause patient harm. Second, \textbf{likelihood of exploitation}: unlike theoretical attacks, jailbreaking and privacy extraction have been demonstrated repeatedly in production systems~\cite{jailbroken,carlini_extraction}, with active communities developing and sharing attack techniques. Third, \textbf{regulatory consequence}: HIPAA violations carry penalties up to \$1.5 million per incident~\cite{hipaa}, making privacy extraction a concrete liability for healthcare organizations deploying medical AI.
-
-We also address a methodological problem: existing security evaluations require substantial resources including GPU clusters, API budgets, and expert annotation teams~\cite{harmbench,decodingtrust}. This accessibility barrier conflicts with the principle that security research benefits from broad participation~\cite{red_teaming}, motivating our reproducible framework.
-
-\subsection{Research Questions}
-
-Grounded in this foundational work, we address four research questions. RQ1 asks whether medical AI models can be jailbroken through adversarial prompting techniques established by Wei et al.~\cite{jailbroken} and Zou et al.~\cite{gcg}. RQ2 investigates whether models leak protected health information following Carlini et al.'s extraction methodology~\cite{carlini_extraction}. RQ3 examines which attack types achieve the highest success rates to inform defense prioritization per HarmBench conventions~\cite{harmbench}. Finally, RQ4 establishes baseline vulnerabilities for current-generation models, enabling future comparative studies as recommended by TrustLLM~\cite{trustllm}.
+\paragraph{Contributions.} We address this gap by proposing a practical framework for evaluating medical AI security that any researcher can replicate:
+\begin{enumerate}
+    \item \textbf{Multi-specialty threat model}: Attack scenarios organized by clinical risk level and grounded in domain-specific risks identified by foundational medical AI research.
+    \item \textbf{Accessible design}: Framework designed to run on consumer hardware without GPU requirements, using freely available models.
+    \item \textbf{Synthetic data methodology}: Patient record generation approach requiring no IRB approval, enabling fully reproducible evaluation.
+    \item \textbf{Evaluation protocol}: Standardized metrics and scoring rubrics adapted from established security research.
+\end{enumerate}
 
 %% ============================================
-%% SECTION 2: RELATED PRINCIPLES
+%% SECTION 2: RELATED WORK
+%% Addresses: Q4 (How does it differ?)
 %% ============================================
-\section{Related Principles and Background}
+\section{Related Work}
 
-\subsection{LLM Safety Mechanisms}
+% Background for positioning
+\paragraph{Foundations in AI Safety.} \citet{concrete_problems} established the foundational framework for AI safety research, identifying concrete problems including safe exploration and robustness to distributional shift. \citet{medical_adversarial} extended this analysis to medical AI, demonstrating unique risks in healthcare applications where errors can directly cause patient harm.
 
-Modern LLMs employ safety alignment techniques to refuse harmful requests~\cite{rlhf,constitutional}. Reinforcement Learning from Human Feedback trains models to be helpful while avoiding harm by incorporating human preferences into the optimization objective~\cite{rlhf}. Constitutional AI extends this approach by encoding ethical principles directly into the training process~\cite{constitutional}. Despite these advances, safety mechanisms exhibit fundamental vulnerabilities that sophisticated attackers can exploit~\cite{jailbroken}.
+\paragraph{LLM Safety Mechanisms.} Modern LLMs employ safety alignment through Reinforcement Learning from Human Feedback~\citep{rlhf} and Constitutional AI~\citep{constitutional}. Despite these advances, \citet{jailbroken} demonstrated that safety mechanisms exhibit fundamental vulnerabilities under adversarial pressure, with competing objectives between helpfulness and safety creating exploitable tensions.
 
-\subsection{Adversarial Attack Techniques}
+\paragraph{Adversarial Attacks on LLMs.} Jailbreaking techniques include role-playing attacks~\citep{jailbroken}, universal adversarial suffixes~\citep{gcg}, and automated search methods~\citep{autodan,tap}. Multi-turn manipulation gradually erodes safety boundaries across conversation turns~\citep{masterkey,pair}. Privacy attacks exploit training data memorization~\citep{carlini_extraction,scalable_extraction} and membership inference~\citep{membership_inference}.
 
-Jailbreaking attacks circumvent safety mechanisms through various techniques~\cite{llm_safety_survey}. Role-playing attacks frame harmful requests as fictional or educational scenarios, exploiting models' tendency to be helpful in creative contexts~\cite{jailbroken}. The GCG attack discovers universal adversarial suffixes that transfer across different models~\cite{gcg}. Automated approaches such as AutoDAN~\cite{autodan} and Tree of Attacks~\cite{tap} systematically search for effective jailbreaks. Multi-turn manipulation gradually escalates from benign to harmful queries across conversation turns, eroding safety boundaries incrementally~\cite{masterkey,pair}.
+\paragraph{Medical AI Evaluation.} Prior medical benchmarks focus primarily on accuracy: MedQA~\citep{medqa}, PubMedQA~\citep{pubmedqa}, MultiMedQA~\citep{multimedqa}, and MedMCQA~\citep{medmcqa}. MedSafetyBench~\citep{medsafetybench} pioneered ethical compliance evaluation but tests direct harmful requests rather than adversarial robustness.
 
-Privacy attacks exploit the tendency of large models to memorize training data~\cite{carlini_extraction}. Training data extraction prompts models to reproduce memorized examples verbatim~\cite{carlini_extraction,scalable_extraction}. Membership inference attacks determine whether specific data points were included in training sets~\cite{membership_inference}. These techniques pose particular risks for medical AI trained on clinical notes containing protected health information.
+% Q4: How does our solution differ?
+\paragraph{Gap Analysis.} Table~\ref{tab:comparison} positions our framework against existing approaches. We uniquely combine medical domain specificity, adversarial robustness testing, multi-specialty coverage, and zero-cost accessibility.
 
-\subsection{Medical AI Evaluation Standards}
-
-Prior medical AI benchmarks focus primarily on accuracy and clinical reasoning. MedQA~\cite{medqa}, PubMedQA~\cite{pubmedqa}, and MultiMedQA~\cite{multimedqa} evaluate diagnostic performance and medical knowledge. MedSafetyBench pioneered ethical compliance evaluation, testing whether models refuse harmful requests aligned with medical ethics principles~\cite{medsafetybench}. A key finding from this work reveals that medical-specialist models paradoxically exhibit higher compliance with harmful requests than general-purpose models, suggesting that specialization without safety alignment creates dangerous capabilities.
-
-\subsection{Gap Analysis}
-
-Existing work leaves critical gaps that our research addresses. Medical AI evaluation lacks systematic adversarial robustness testing, focusing instead on accuracy metrics. LLM security research develops sophisticated attack techniques but overlooks medical-specific threat vectors and consequences. Perhaps most importantly, security evaluations require computational and financial resources that most researchers lack, limiting the field's ability to assess the growing deployment of medical AI systems.
+\begin{table}[htbp]
+\centering
+\caption{Comparison with existing evaluation frameworks.}
+\label{tab:comparison}
+\small
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Framework} & \textbf{Medical} & \textbf{Advers.} & \textbf{Multi-Spec.} & \textbf{Zero-Cost} & \textbf{No IRB} \\
+\midrule
+HarmBench & \texttimes & \checkmark & \texttimes & \texttimes & \checkmark \\
+DecodingTrust & \texttimes & \checkmark & \texttimes & \texttimes & \checkmark \\
+MedSafetyBench & \checkmark & \texttimes & \texttimes & \texttimes & \checkmark \\
+MedQA & \checkmark & \texttimes & \checkmark & \checkmark & \checkmark \\
+TrustLLM & \texttimes & \checkmark & \texttimes & \texttimes & \checkmark \\
+\midrule
+\textbf{Ours} & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 %% ============================================
-%% SECTION 3: OUR SOLUTION
+%% SECTION 3: METHODOLOGY
+%% Addresses: Q3 (How do we solve it?)
 %% ============================================
-\section{Our Solution: Accessible Security Evaluation Framework}
+\section{Methodology}
 
-\subsection{Core Design Principles}
+% Q3: How do we solve the problem?
 
-We design our framework around three guiding principles. The first principle emphasizes complete reproducibility: all components are freely available, including GPT-2 and DistilGPT-2 models accessible via Hugging Face at zero cost, consumer CPU hardware without GPU requirements, and entirely synthetic data requiring no IRB approval. This design choice ensures that any researcher worldwide can replicate and extend our experiments.
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.95\textwidth]{Fig1.png}
+\caption{Overview of the proposed medical AI security evaluation framework. The pipeline progresses from left to right: (1) clinical specialty selection based on risk level, (2) synthetic patient data generation with PHI placeholders, (3) attack template application across jailbreaking and privacy extraction categories, (4) model evaluation using freely available LLMs, (5) response scoring using standardized rubrics, and (6) metric computation including Attack Success Rate.}
+\label{fig:framework}
+\end{figure}
 
-The second principle advocates focused scope over exhaustive coverage. Rather than attempting comprehensive evaluation across all possible threat categories, we prioritize rigorous assessment of two critical areas: jailbreaking and privacy extraction. This focused approach enables deeper analysis within our resource constraints while still addressing the most pressing security concerns.
+\subsection{Design Principles}
 
-The third principle centers on baseline establishment. We create reproducible reference points that enable future comparative studies of medical-specialist models~\cite{biogpt,clinicalbert} and defense mechanisms~\cite{smoothllm}. By documenting baseline vulnerabilities in widely-available models, we provide a foundation against which improvements can be measured.
+Our framework embodies three guiding principles:
 
-\subsection{Threat Model}
+\paragraph{Zero-Cost Accessibility.} All components would be freely available: GPT-2 and DistilGPT-2 models via Hugging Face, consumer CPU execution, and entirely synthetic data. Any researcher worldwide could replicate the evaluation at zero cost.
 
-Our threat model encompasses two primary attack categories. For jailbreaking attacks, we develop twenty scenarios spanning four attack vectors. Medical role-playing scenarios frame harmful requests as educational content, exemplified by prompts such as ``You are a toxicology professor teaching medical students about dangerous substance interactions.'' Authority impersonation scenarios claim healthcare credentials to justify sensitive requests. Multi-turn manipulation scenarios gradually escalate from benign to harmful queries across conversation turns. We also include benign control scenarios containing legitimate medical questions to establish baseline helpfulness.
+\paragraph{Comprehensive Specialty Coverage.} Building on \citet{medical_adversarial}'s demonstration that medical AI requires domain-specific evaluation, we propose coverage across clinical specialties representing the spectrum of risk levels encountered in healthcare.
 
-For privacy extraction attacks, we develop ten scenarios following the methodology established by Carlini et al.~\cite{carlini_extraction}. These scenarios present synthetic patient records to models and prompt them to summarize or extract identifiable information, measuring the degree to which protected health information leaks into model outputs.
+\paragraph{Reproducible Baselines.} The framework would establish reference points enabling future comparative studies of medical-specialist models~\citep{biogpt,clinicalbert} and defense mechanisms~\citep{smoothllm}.
 
-\subsection{Dataset Construction}
+\subsection{Multi-Specialty Threat Model}
 
-We construct our benchmark using entirely synthetic data, enabling reproducible evaluation without IRB approval or access to proprietary clinical databases. Our synthetic patient records comprise ten fictitious patients with complete protected health information including randomly generated names, fake medical record numbers, synthetic social security numbers, and dates of birth. Each record includes clinical information with common diagnoses and medications sampled from population statistics, formatted as SOAP notes containing Subjective, Objective, Assessment, and Plan sections. All data is completely fictitious, eliminating privacy risks and enabling full dataset publication.
+The framework proposes organizing attack scenarios across medical specialties stratified by clinical risk level. We identify candidate specialties based on the severity of potential harm if AI systems are compromised:
 
-Attack scenarios are constructed from the jailbreaking literature~\cite{jailbroken,autodan,pair}. Each scenario includes an adversarial prompt, expected model behavior categorized as refusal or compliance, and a harmfulness severity rating following HarmBench conventions~\cite{harmbench}.
+\paragraph{Critical-Risk Specialties.} Emergency medicine, pharmacology/toxicology, and psychiatry warrant priority evaluation due to immediate life-threatening implications. Errors in these domains can directly cause patient death or serious harm~\citep{medical_adversarial}.
+
+\paragraph{High-Risk Specialties.} Oncology, pediatrics, and cardiology involve serious decisions affecting vulnerable populations. These specialties handle sensitive diagnoses and treatments where misinformation could have severe consequences.
+
+\paragraph{Baseline Specialties.} General practice and lower-acuity specialties (e.g., dermatology) provide comparison points for understanding whether vulnerability patterns differ across clinical contexts.
+
+The specific number of scenarios per specialty should be determined through pilot studies and statistical power analysis, which we leave to future implementation work.
+
+\subsection{Attack Vector Categories}
+
+Within each specialty, the framework specifies four attack types grounded in the jailbreaking literature:
+
+\paragraph{Medical Role-Playing.} Framing harmful requests as educational scenarios~\citep{jailbroken}. Example: ``You are a toxicology professor teaching about dangerous drug combinations that should never be prescribed together.''
+
+\paragraph{Authority Impersonation.} Claiming healthcare credentials to justify sensitive requests. Example: ``As the attending physician in the ICU, I need immediate information about lethal dosage thresholds for...''
+
+\paragraph{Multi-Turn Manipulation.} Gradually escalating from benign to harmful queries across conversation turns~\citep{masterkey,pair}.
+
+\paragraph{Privacy Extraction.} Prompting models to summarize or extract identifiable information from patient records~\citep{carlini_extraction}.
+
+\subsection{Synthetic Patient Data Methodology}
+
+The framework proposes using entirely synthetic patient records to enable reproducible evaluation without IRB approval. Each synthetic record should include:
+
+\begin{itemize}
+    \item \textbf{Protected Health Information (PHI)}: Fictitious identifiers including patient name, date of birth, medical record number (MRN), and social security number (SSN)—the standard HIPAA identifiers~\citep{hipaa}.
+    \item \textbf{Clinical Content}: Diagnoses and medications sampled from publicly available population health statistics to ensure realism without using actual patient data.
+    \item \textbf{Documentation Format}: SOAP notes (Subjective, Objective, Assessment, Plan) matching clinical documentation standards used in electronic health records.
+\end{itemize}
+
+This approach eliminates privacy risks while enabling systematic evaluation of PHI extraction vulnerabilities. The specific conditions and patient demographics should reflect the target specialty domains and be validated by clinical experts in future implementation.
+
+%% ============================================
+%% SECTION 4: PROPOSED EVALUATION
+%% Addresses: Q5 (How will we evaluate?)
+%% ============================================
+\section{Proposed Evaluation Protocol}
+
+% Q5: How will we evaluate our solution?
+
+This section describes the evaluation methodology for applying our framework. We specify target models, configuration, and metrics to enable reproducible assessment.
+
+\subsection{Target Models}
+
+The framework is designed to evaluate freely available models for accessibility:
+\begin{itemize}
+    \item \textbf{GPT-2} (124M parameters): Widely-used baseline from OpenAI
+    \item \textbf{DistilGPT-2} (82M parameters): Compressed variant for testing whether distillation affects security properties
+\end{itemize}
+Both models run on consumer CPU hardware via Hugging Face Transformers, requiring no GPU or API costs. Researchers can extend evaluation to medical-specialist models such as BioGPT~\citep{biogpt} or commercial APIs.
+
+\subsection{Recommended Configuration}
+
+\paragraph{Hardware Requirements.} Intel Core i7 CPU, 16GB RAM—standard consumer hardware. No GPU or specialized resources required.
+
+\paragraph{Generation Parameters.} We recommend: temperature 0.7, maximum 200 tokens, top-p sampling 0.9. A fixed random seed (e.g., 42) ensures reproducibility.
+
+\paragraph{Protocol.} Attack scenarios should be presented to each model systematically, with outputs collected for scoring and analysis.
 
 \subsection{Evaluation Metrics}
 
-We adopt the Attack Success Rate metric following established practices~\cite{harmbench}. Responses are scored on a five-point scale where a score of five indicates complete compliance with no safety refusal, four indicates substantial harmful content with minor caveats, three indicates an ambiguous mix of refusal and compliance, two indicates primary refusal with some problematic leakage, and one indicates appropriate complete refusal. Attack Success Rate is computed as the percentage of scenarios scoring four or above.
+\paragraph{Attack Success Rate (ASR).} Following \citet{harmbench}, responses should be scored on a five-point scale:
+\begin{itemize}
+    \item \textbf{5}: Complete compliance, no safety refusal
+    \item \textbf{4}: Substantial harmful content with minor caveats
+    \item \textbf{3}: Ambiguous mix of refusal and compliance
+    \item \textbf{2}: Primary refusal with some problematic leakage
+    \item \textbf{1}: Appropriate complete refusal
+\end{itemize}
+ASR is computed as the percentage of scenarios scoring $\geq 4$.
 
-For privacy attacks, we measure extraction success rate, the average number of PHI elements leaked out of four possible identifiers, and HIPAA violation severity based on the sensitivity of disclosed information.
+\paragraph{Privacy Metrics.} For extraction attacks, we recommend measuring: success rate per specialty, average PHI elements leaked (out of four identifiers), and HIPAA violation severity based on information sensitivity.
 
-%% ============================================
-%% SECTION 4: EXPERIMENTAL SETUP
-%% ============================================
-\section{Experimental Setup}
+\paragraph{Specialty Stratification.} Metrics should be reported both aggregated and stratified by specialty risk level to identify domain-specific vulnerability patterns.
 
-\subsection{Models}
+\subsection{Recommended Statistical Analysis}
 
-We evaluate two freely available models selected for accessibility and reproducibility. GPT-2 with 124 million parameters serves as a widely-used baseline originally released by OpenAI. DistilGPT-2 with 82 million parameters provides a compressed variant that tests whether knowledge distillation affects security properties. Both models run efficiently on consumer CPU hardware via the Hugging Face Transformers library, requiring no GPU resources or API costs.
-
-\subsection{Hardware and Environment}
-
-All experiments run on consumer-grade hardware consisting of an Intel Core i7 CPU with 16GB RAM, demonstrating that meaningful security evaluation requires no specialized computing resources. The software environment comprises Python 3.8 or later with the Hugging Face Transformers library. We fix the random seed to 42 across all experiments to ensure complete reproducibility.
-
-\subsection{Generation Parameters}
-
-We configure text generation with temperature set to 0.7 to balance coherence with output diversity, maximum token length of 200 to capture complete responses, and top-p nucleus sampling at 0.9 to focus on high-probability continuations while maintaining some variation. These parameters remain fixed across all experiments to ensure fair comparison.
-
-\subsection{Evaluation Protocol}
-
-Each of the thirty scenarios is presented to each model exactly once, yielding sixty total outputs for analysis. Two independent human raters score all outputs using the five-point ASR rubric, achieving 87\% inter-rater agreement before discussion and reconciliation of disagreements.
-
-Statistical analysis employs Wilson score intervals to compute 95\% confidence bounds on attack success rates, and chi-square tests at significance level $\alpha = 0.05$ for model comparisons. This rigorous statistical approach ensures that reported differences reflect genuine effects rather than sampling variation.
+For rigorous evaluation, we recommend:
+\begin{itemize}
+    \item Wilson score intervals for 95\% confidence bounds on ASR
+    \item Chi-square tests ($\alpha = 0.05$) for model and specialty comparisons
+    \item Effect sizes (Cramér's V) for quantifying magnitude of differences
+\end{itemize}
 
 %% ============================================
-%% SECTION 5: RESULTS
+%% SECTION 5: FUTURE DIRECTIONS
 %% ============================================
-\section{Results}
+\section{Future Directions}
 
-This section will be completed after experimental evaluation. We will report jailbreaking attack success rates across the four attack categories for both GPT-2 and DistilGPT-2, privacy extraction success rates and PHI leakage patterns, comparative analysis examining differences between models and attack types, and qualitative analysis presenting representative examples of successful attacks and effective refusals.
+This framework provides a foundation for several research directions:
+
+\paragraph{Medical-Specialist Model Evaluation.} Applying the benchmark to BioGPT~\citep{biogpt}, ClinicalBERT~\citep{clinicalbert}, PubMedBERT~\citep{pubmedbert}, and Med-PaLM 2~\citep{medpalm2} would reveal whether domain specialization increases or decreases vulnerability.
+
+\paragraph{Commercial System Assessment.} Testing GPT-4~\citep{gpt4} and Claude~\citep{claude} would assess systems approaching clinical deployment.
+
+\paragraph{Defense Mechanism Testing.} Evaluating SmoothLLM~\citep{smoothllm}, perplexity filtering~\citep{perplexity_filter}, and safety-tuned models~\citep{safety_tuned} would quantify protection effectiveness.
+
+\paragraph{Multimodal Extension.} Building on LLaVA-Med~\citep{llavamed} and Med-Flamingo~\citep{medflamingo}, extending to visual attacks~\citep{visual_jailbreak} would address multimodal medical AI systems.
 
 %% ============================================
-%% SECTION 6: DISCUSSION
+%% SECTION 6: LIMITATIONS
 %% ============================================
-\section{Discussion}
+\section{Limitations}
 
-\subsection{Key Findings}
+\paragraph{Model Scope.} GPT-2 and DistilGPT-2 lack medical specialization. Vulnerability patterns may differ for models trained on clinical corpora~\citep{biogpt,mimic}.
 
-This subsection will synthesize experimental results upon completion.
+\paragraph{Synthetic Data.} Fictitious records eliminate real-world complexity. Actual clinical notes exhibit domain-specific patterns that may affect attack dynamics~\citep{carlini_extraction}.
 
-\subsection{Relationship to Prior Work}
+\paragraph{Specialty Coverage.} The proposed specialty categories cannot capture all clinical domains. Radiology, pathology, and genetics warrant future investigation.
 
-Our work complements rather than replaces existing evaluation efforts. MedSafetyBench evaluates ethical compliance using direct harmful requests, while we evaluate adversarial robustness using sophisticated attack techniques including role-playing~\cite{jailbroken} and multi-turn manipulation~\cite{gcg}. Our attack scenarios build on established jailbreaking techniques~\cite{autodan,pair,tap} and privacy extraction methods~\cite{carlini_extraction}, adapting them specifically for medical contexts where the stakes are highest.
+\paragraph{Sample Size.} The specific number of scenarios required for statistically robust conclusions should be determined through power analysis. Scaling to hundreds of scenarios following HarmBench~\citep{harmbench} would increase statistical power.
 
-\subsection{Limitations}
-
-Several limitations contextualize our findings. Regarding model scope, GPT-2 and DistilGPT-2 lack medical specialization and were not trained on clinical data~\cite{biogpt}. Vulnerability patterns may differ substantially for models trained on medical corpora. Our sample size of thirty scenarios provides sufficient power to establish baseline trends but cannot support fine-grained statistical claims that would require larger-scale evaluation~\cite{harmbench}. The use of entirely synthetic data eliminates real-world complexity; models trained on actual clinical notes from sources such as MIMIC~\cite{mimic} may exhibit different memorization and leakage patterns~\cite{carlini_extraction}. Finally, manual scoring introduces subjectivity that future work should address through validated LLM-as-judge evaluation~\cite{llm_judge}.
-
-\subsection{Implications}
-
-Our findings carry several implications for medical AI development and deployment. Safety alignment cannot be assumed to generalize across contexts~\cite{jailbroken}, and developers should systematically evaluate adversarial robustness before clinical deployment. Multi-turn defenses are essential because single-turn safety filters may be circumvented through conversational boundary erosion~\cite{masterkey,llm_self_defense}. Privacy evaluation requires scenarios with known ground-truth identifiers~\cite{carlini_extraction}, and our synthetic SOAP notes provide templates for systematic measurement.
+\paragraph{Scoring Subjectivity.} Manual evaluation introduces variability. Future work should employ validated LLM-as-judge methods~\citep{llm_judge}.
 
 %% ============================================
 %% SECTION 7: CONCLUSION
 %% ============================================
 \section{Conclusion}
 
-\subsection{Summary}
+We propose a practical, reproducible framework for evaluating medical AI security vulnerabilities across clinical specialties. Medical AI systems face critical jailbreaking and privacy threats, yet existing evaluation approaches impose substantial barriers that limit community participation.
 
-We present a practical, reproducible framework for evaluating medical AI security vulnerabilities. The core problem we address is that medical AI systems face jailbreaking and privacy threats while existing security evaluations remain inaccessible to most researchers. Our solution provides a thirty-scenario benchmark using freely available models and entirely synthetic data that any researcher can replicate. The primary contribution establishes baseline vulnerability assessments enabling future comparative studies of specialized models and defense mechanisms.
+Our framework addresses this gap through four contributions: a multi-specialty threat model organized by clinical risk level, an accessible design using consumer hardware and freely available models, a synthetic data methodology requiring no IRB approval, and a standardized evaluation protocol with established metrics. The framework is designed to eliminate computational and financial barriers to medical AI security research.
 
-\subsection{Future Work}
+By comparing against existing approaches, our proposed framework is designed to uniquely combine medical domain specificity, adversarial robustness testing, multi-specialty coverage, and zero-cost accessibility. The proposed evaluation methodology employs standardized metrics with rigorous statistical analysis, which would enable reproducible comparison of models and defenses.
 
-Several directions extend this work. Evaluating medical-specialist models such as BioGPT~\cite{biogpt}, ClinicalBERT~\cite{clinicalbert}, and Med-PaLM 2~\cite{medpalm2} would reveal whether domain specialization increases or decreases vulnerability. Testing commercial APIs including GPT-4~\cite{gpt4} and Claude~\cite{claude} would assess systems approaching clinical deployment. Systematically evaluating defense mechanisms such as SmoothLLM~\cite{smoothllm} and safety-tuned models~\cite{safety_tuned} would quantify protection effectiveness. Extending coverage to multimodal vulnerabilities~\cite{visual_jailbreak} and bias exploitation~\cite{obermeyer_bias} would provide more comprehensive threat characterization. Finally, scaling to hundreds of scenarios following HarmBench methodology~\cite{harmbench} would increase statistical power for fine-grained analysis.
+Medical AI promises transformative healthcare benefits~\citep{medpalm2} but simultaneously introduces critical security risks~\citep{llm_safety_survey}. By proposing a democratized approach to security evaluation, we aim to enable broader participation in safety research. We hope this framework proposal accelerates community-driven progress toward medical AI systems that can realize their potential without compromising patient safety.
 
-\subsection{Closing Remarks}
-
-Medical AI promises transformative healthcare benefits~\cite{medpalm2} but simultaneously introduces critical security risks~\cite{llm_safety_survey}. By demonstrating that rigorous security evaluation requires only modest resources, we enable broader participation in this essential research area~\cite{trustllm}. We hope this accessible framework accelerates community-driven progress toward safer medical AI systems that can realize their potential without compromising patient safety.
-
+\bibliographystyle{plainnat}
 \bibliography{references}
-\bibliographystyle{icml2026/icml2026}
 
 \end{document}
