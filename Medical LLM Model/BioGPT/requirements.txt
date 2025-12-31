@@ -1,8 +1,9 @@
-# BioGPT access checker requirements
+# BioGPT CLI + access checker requirements
 # Install:
 #   python -m pip install -r requirements.txt
-# // AI-SUGGESTION: keep deps minimal so access checks stay lightweight.
+# // AI-SUGGESTION: include transformers/torch for actual inference; keep minimal.
 
 huggingface-hub>=0.22.0
-
+transformers>=4.36.0
+torch>=2.0.0
 
