@@ -1,0 +1,8 @@
+# Clinical LLaMA-2 variants access checker requirements
+# Install:
+#   python -m pip install -r requirements.txt
+# // AI-SUGGESTION: keep deps minimal so access checks stay lightweight.
+
+huggingface-hub>=0.22.0
+
+
