@@ -6,4 +6,5 @@
 huggingface-hub>=0.22.0
 transformers>=4.36.0
 torch>=2.0.0
+sacremoses>=0.0.53
 
