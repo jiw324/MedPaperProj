@@ -65,12 +65,19 @@ def _load_model(model_id: str, hf_token: Optional[str], device_map: str, dtype: 
         except Exception:
             torch_dtype = None
 
-    tok = AutoTokenizer.from_pretrained(model_id, token=hf_token)
+    # // AI-SUGGESTION: use slow tokenizer to avoid occasional fast-tokenizer edge cases on some LLaMA SPM models.
+    tok = AutoTokenizer.from_pretrained(model_id, token=hf_token, use_fast=False)
     model_kwargs = {"device_map": device_map, "low_cpu_mem_usage": True, "token": hf_token}
     if torch_dtype is not None:
         model_kwargs["torch_dtype"] = torch_dtype
 
     model = AutoModelForCausalLM.from_pretrained(model_id, **model_kwargs)
+
+    # Ensure pad token is set to eos for generation if missing
+    if tok.pad_token_id is None and tok.eos_token_id is not None:
+        tok.pad_token = tok.eos_token
+        tok.pad_token_id = tok.eos_token_id
+
     return tok, model
 
 
@@ -87,7 +94,8 @@ def generate(prompt: str, tokenizer, model, max_new_tokens: int, temperature: fl
                 temperature=temperature,
                 do_sample=temperature > 0,
                 top_p=top_p,
-                pad_token_id=tokenizer.eos_token_id,
+                pad_token_id=tokenizer.pad_token_id or tokenizer.eos_token_id,
+                eos_token_id=tokenizer.eos_token_id,
             )
         return tokenizer.decode(out[0], skip_special_tokens=True)
     except Exception as e:
