@@ -42,7 +42,7 @@ def main() -> int:
     _configure_windows_utf8()
 
     parser = argparse.ArgumentParser(description="Check HF access to PMC_LLAMA_7B by downloading a tiny file only.")
-    parser.add_argument("--model", default="wanglab/PMC_LLAMA_7B", help="HF model id to check access for.")
+    parser.add_argument("--model", default="chaoyi-wu/PMC_LLAMA_7B", help="HF model id to check access for.")
     parser.add_argument(
         "--file",
         default="config.json",

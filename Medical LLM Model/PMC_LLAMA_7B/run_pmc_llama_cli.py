@@ -102,7 +102,7 @@ def main() -> int:
         description="PMC_LLAMA_7B CLI for causal text generation.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument("--model", default="wanglab/PMC_LLAMA_7B", help="HF model id to load.")
+    parser.add_argument("--model", default="chaoyi-wu/PMC_LLAMA_7B", help="HF model id to load.")
     parser.add_argument("--device-map", default="auto", help="Transformers device_map (auto/cpu/cuda...).")
     parser.add_argument("--dtype", default="auto", choices=["auto", "float16", "bfloat16", "float32"])
     parser.add_argument("--max-new-tokens", type=int, default=256)

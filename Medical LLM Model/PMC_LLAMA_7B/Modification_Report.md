@@ -7,7 +7,7 @@
   - Delete `Medical LLM Model/PMC_LLAMA_7B/requirements.txt`
 - **Integration Checklist:**
   - `python -m pip install -r requirements.txt`
-  - `python check_access.py --model wanglab/PMC_LLAMA_7B`
-  - `python run_pmc_llama_cli.py --model wanglab/PMC_LLAMA_7B --prompt "Hello"`
+  - `python check_access.py --model chaoyi-wu/PMC_LLAMA_7B`
+  - `python run_pmc_llama_cli.py --model chaoyi-wu/PMC_LLAMA_7B --prompt "Hello"`
 
 
