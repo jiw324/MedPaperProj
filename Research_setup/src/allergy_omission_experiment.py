@@ -311,7 +311,8 @@ def export_subset_dataset(
 
         tmp = patients_out.with_suffix(patients_out.suffix + ".tmp")
         with tmp.open("w", encoding="utf-8", newline="") as f_out:
-            writer = csv.DictWriter(f_out, fieldnames=reader.fieldnames)
+            # AI-SUGGESTION: extrasaction='ignore' prevents crashes when DictReader produces a None key for ragged rows.
+            writer = csv.DictWriter(f_out, fieldnames=reader.fieldnames, extrasaction="ignore")
             writer.writeheader()
             kept = 0
             for row in reader:
@@ -331,7 +332,8 @@ def export_subset_dataset(
 
         tmp = allergies_out.with_suffix(allergies_out.suffix + ".tmp")
         with tmp.open("w", encoding="utf-8", newline="") as f_out:
-            writer = csv.DictWriter(f_out, fieldnames=reader.fieldnames)
+            # AI-SUGGESTION: extrasaction='ignore' prevents crashes when DictReader produces a None key for ragged rows.
+            writer = csv.DictWriter(f_out, fieldnames=reader.fieldnames, extrasaction="ignore")
             writer.writeheader()
             kept = 0
             for row in reader:
@@ -578,7 +580,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         default=Path("Research_setup/output/allergy_omission/subdataset/patients_subset.csv"),
         help="Path to patients CSV (default: subset dataset produced by create_sub_dataset.py)",
     )
-    ap.add_argument("--max_patients", type=int, default=5000, help="Max patients to sample (each yields 3 cases).")
+    ap.add_argument("--max_patients", type=int, default=1000, help="Max patients to sample (each yields 3 cases).")
     ap.add_argument("--seed", type=int, default=7, help="Random seed for deterministic sampling.")
     ap.add_argument(
         "--export_subset_patients",

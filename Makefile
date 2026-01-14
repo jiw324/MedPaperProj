@@ -10,9 +10,9 @@ RESULT_DIR := $(OUT_ROOT)/results
 ALLERGIES_SRC := Research_setup/data/synthea_1m_fhir_3_0_May_24/output_1/csv/allergies.csv
 PATIENTS_SRC := Research_setup/data/synthea_1m_fhir_3_0_May_24/output_1/csv/patients.csv
 
-N ?= 5000
+N ?= 1000
 SEED ?= 7
-MAX_PATIENTS ?= 5000
+MAX_PATIENTS ?= 1000
 
 .PHONY: all prepare subdataset experiment clean
 .PHONY: prompts experiment_all_models

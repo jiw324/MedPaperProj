@@ -27,7 +27,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     ap = argparse.ArgumentParser(description="Create a filtered subdataset of allergy-bearing patients.")
     ap.add_argument("--allergies_csv", type=Path, default=DEFAULT_ALLERGIES_CSV, help="Path to Synthea allergies.csv")
     ap.add_argument("--patients_csv", type=Path, default=DEFAULT_PATIENTS_CSV, help="Path to Synthea patients.csv")
-    ap.add_argument("--n", type=int, default=5000, help="Number of allergy-bearing patients to sample.")
+    ap.add_argument("--n", type=int, default=1000, help="Number of allergy-bearing patients to sample.")
     ap.add_argument("--seed", type=int, default=7, help="Random seed for deterministic sampling.")
     ap.add_argument("--out_dir", type=Path, default=DEFAULT_SUBSET_OUT_DIR, help="Output directory for subset CSVs.")
 
