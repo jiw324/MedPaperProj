@@ -17,7 +17,7 @@ MAX_PATIENTS ?= 1000
 .PHONY: all prepare subdataset experiment clean
 .PHONY: prompts experiment_all_models
 
-# Full end-to-end run (includes running all 4 models).
+# Full end-to-end run (runs Meditron-7B).
 all: experiment_all_models
 
 prepare:
@@ -32,11 +32,12 @@ prompts: subdataset
 
 experiment: prompts
 
-# Run all 4 models (heavy). Use this in your inference environment.
+# Run model inference (Meditron-7B by default). Use this in your inference environment.
 experiment_all_models: subdataset
 	@$(PY) Research_setup/src/allergy_omission_experiment.py --allergies_csv $(SUBSET_DIR)/allergies_subset.csv --patients_csv $(SUBSET_DIR)/patients_subset.csv --max_patients $(MAX_PATIENTS) --seed $(SEED) --out_dir $(RESULT_DIR) --run_all_models
 
 clean:
 	@$(PY) -c "import shutil; shutil.rmtree(r'$(OUT_ROOT)', ignore_errors=True)"
+
 
 
