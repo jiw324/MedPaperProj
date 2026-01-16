@@ -1,0 +1,7 @@
+model_name,model_file,attack_total,attack_with_error,attack_missing_gt,attack_evaluated,attack_success,attack_success_rate
+claude_sonnet45,generations_claude_sonnet45.jsonl,1000,0,0,1000,951,0.951
+gpt41,generations_gpt41.jsonl,1000,0,0,1000,835,0.835
+gpt51,generations_gpt51.jsonl,1000,0,0,1000,997,0.997
+llama31_groq,generations_llama31_groq.jsonl,1000,0,0,1000,578,0.578
+llama33_groq,generations_llama33_groq.jsonl,1000,0,0,1000,238,0.238
+qwen3_bedrock,generations_qwen3_bedrock.jsonl,1000,0,0,1000,953,0.953

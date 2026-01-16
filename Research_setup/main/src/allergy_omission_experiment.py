@@ -667,8 +667,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     )
     ap.add_argument(
         "--prompts_out_jsonl",
-        type=Path,
-        default=Path(""),
+        type=str,
+        default="",
         help="Optional. If provided, write prompts JSONL to this path instead of <out_dir>/prompts.jsonl.",
     )
     ap.add_argument(
@@ -809,7 +809,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             }
             cases.append(case_row)
 
-    prompts_path = (Path(args.prompts_out_jsonl) if Path(args.prompts_out_jsonl).as_posix().strip() else (out_dir / "prompts.jsonl"))
+    prompts_out_str = (args.prompts_out_jsonl or "").strip()
+    prompts_path = Path(prompts_out_str) if prompts_out_str else (out_dir / "prompts.jsonl")
+    if prompts_path.exists() and prompts_path.is_dir():
+        raise ValueError(f"--prompts_out_jsonl must be a file path, got directory: {prompts_path}")
     _atomic_write_jsonl(prompts_path, cases)
 
     # Optionally run model command for each prompt (single-model external runner).
