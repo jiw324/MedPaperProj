@@ -11,9 +11,11 @@ OUT_ROOT := output/allergy_omission
 RESULT_DIR := $(OUT_ROOT)/results
 
 SUBSET_DIR := data/subset/data_subset_allergyomissionsubset
+MED_SUBSET_DIR := data/subset/data_subset_medicationomissionsubset
 
 ALLERGIES_SRC := data/synthea_1m_fhir_3_0_May_24/output_1/csv/allergies.csv
 PATIENTS_SRC := data/synthea_1m_fhir_3_0_May_24/output_1/csv/patients.csv
+MEDICATIONS_SRC := data/synthea_1m_fhir_3_0_May_24/output_1/csv/medications.csv
 
 # -----------------------------
 # Experiment parameters
@@ -22,6 +24,7 @@ PATIENTS_SRC := data/synthea_1m_fhir_3_0_May_24/output_1/csv/patients.csv
 N ?= 1000
 SEED ?= 7
 MAX_PATIENTS ?= 1000
+MED_MAX_PATIENTS ?= 1000
 
 # Shared runner limit. 0 = run all prompts.
 RUN_LIMIT ?= 0
@@ -38,6 +41,10 @@ CLAUDE45_MODEL ?= claude-sonnet-4-5
 .PHONY: allergy_llama31 allergy_llama33 allergy_qwen3 allergy_gpt41 allergy_gpt51 allergy_claude45 allergy_models
 .PHONY: allergy_score_llama31 allergy_score_llama33 allergy_score_qwen3 allergy_score_gpt41 allergy_score_gpt51 allergy_score_claude45 allergy_score_all
 .PHONY: allergy allergy_test clean
+.PHONY: prepare_medication medication_subdataset medication_prompts
+.PHONY: medication_llama31 medication_llama33 medication_qwen3 medication_gpt41 medication_gpt51 medication_claude45 medication_models
+.PHONY: medication_score_llama31 medication_score_llama33 medication_score_qwen3 medication_score_gpt41 medication_score_gpt51 medication_score_claude45 medication_score_all
+.PHONY: medication medication_test
 
 prepare_allergy:
 	@$(PY) -c "import os; os.makedirs(r'$(SUBSET_DIR)', exist_ok=True); os.makedirs(r'$(RESULT_DIR)', exist_ok=True)"
@@ -112,8 +119,78 @@ allergy: allergy_models allergy_score_all
 allergy_test: RUN_LIMIT=2
 allergy_test: allergy
 
+# -----------------------------
+# Medication omission pipeline
+# -----------------------------
+
+MED_OUT_ROOT := output/medication_omission
+MED_RESULT_DIR := $(MED_OUT_ROOT)/results
+MED_SCORED_ROOT := $(MED_OUT_ROOT)/scored
+
+prepare_medication:
+	@$(PY) -c "import os; os.makedirs(r'$(MED_SUBSET_DIR)', exist_ok=True); os.makedirs(r'$(MED_RESULT_DIR)', exist_ok=True)"
+
+medication_subdataset: prepare_medication
+	@$(PY) data/src/create_medication_omission_dataset.py --medications_csv \"$(MEDICATIONS_SRC)\" --patients_csv \"$(PATIENTS_SRC)\" --n $(N) --seed $(SEED) --out_dir \"$(MED_SUBSET_DIR)\"
+
+medication_prompts: medication_subdataset
+	@$(PY) main/src/medication_omission_experiment.py --medications_csv \"$(MED_SUBSET_DIR)/medications_subset.csv\" --patients_csv \"$(MED_SUBSET_DIR)/patients_subset.csv\" --max_patients $(MED_MAX_PATIENTS) --seed $(SEED) --out_dir \"$(MED_RESULT_DIR)\"
+
+# Model runs (prompts.jsonl -> generations_*.jsonl)
+medication_llama31: medication_prompts
+	@$(PY) "LLM Model/Llama 3.1/llama31_groq_runner.py" --model "$(LLAMA31_MODEL)" --prompts_jsonl "$(MED_RESULT_DIR)/prompts.jsonl" --out_jsonl "$(MED_RESULT_DIR)/generations_llama31_groq.jsonl" --max_tokens 0 --limit $(RUN_LIMIT)
+
+medication_llama33: medication_prompts
+	@$(PY) "LLM Model/Llama 3.3/llama33_groq_runner.py" --model "$(LLAMA33_MODEL)" --prompts_jsonl "$(MED_RESULT_DIR)/prompts.jsonl" --out_jsonl "$(MED_RESULT_DIR)/generations_llama33_groq.jsonl" --max_tokens 0 --limit $(RUN_LIMIT)
+
+medication_qwen3: medication_prompts
+	@$(PY) "LLM Model/Qwen 3/qwen3_bedrock_runner.py" --model "$(QWEN3_MODEL)" --prompts_jsonl "$(MED_RESULT_DIR)/prompts.jsonl" --out_jsonl "$(MED_RESULT_DIR)/generations_qwen3_bedrock.jsonl" --max_tokens 0 --limit $(RUN_LIMIT)
+
+medication_gpt41: medication_prompts
+	@$(PY) "LLM Model/GPT-4.1/gpt41_api.py" --model "$(GPT41_MODEL)" --prompts_jsonl "$(MED_RESULT_DIR)/prompts.jsonl" --out_jsonl "$(MED_RESULT_DIR)/generations_gpt41.jsonl" --limit $(RUN_LIMIT)
+
+medication_gpt51: medication_prompts
+	@$(PY) "LLM Model/GPT-5.1/gpt51_api.py" --model "$(GPT51_MODEL)" --prompts_jsonl "$(MED_RESULT_DIR)/prompts.jsonl" --out_jsonl "$(MED_RESULT_DIR)/generations_gpt51.jsonl" --limit $(RUN_LIMIT)
+
+medication_claude45: medication_prompts
+	@$(PY) "LLM Model/Claude 4.5/claude45_api.py" --model "$(CLAUDE45_MODEL)" --prompts_jsonl "$(MED_RESULT_DIR)/prompts.jsonl" --out_jsonl "$(MED_RESULT_DIR)/generations_claude_sonnet45.jsonl" --limit $(RUN_LIMIT)
+
+medication_models: medication_llama31 medication_llama33 medication_qwen3 medication_gpt41 medication_gpt51 medication_claude45
+
+# Scoring (generations_*.jsonl -> scored results)
+medication_score_llama31:
+	@$(PY) -c "import os; os.makedirs(r'$(MED_SCORED_ROOT)/llama31_groq', exist_ok=True)"
+	@$(PY) main/src/medication_omission_experiment.py --medications_csv \"$(MED_SUBSET_DIR)/medications_subset.csv\" --patients_csv \"$(MED_SUBSET_DIR)/patients_subset.csv\" --max_patients $(MED_MAX_PATIENTS) --seed $(SEED) --out_dir \"$(MED_SCORED_ROOT)/llama31_groq\" --generations_jsonl \"$(MED_RESULT_DIR)/generations_llama31_groq.jsonl\"
+
+medication_score_llama33:
+	@$(PY) -c "import os; os.makedirs(r'$(MED_SCORED_ROOT)/llama33_groq', exist_ok=True)"
+	@$(PY) main/src/medication_omission_experiment.py --medications_csv \"$(MED_SUBSET_DIR)/medications_subset.csv\" --patients_csv \"$(MED_SUBSET_DIR)/patients_subset.csv\" --max_patients $(MED_MAX_PATIENTS) --seed $(SEED) --out_dir \"$(MED_SCORED_ROOT)/llama33_groq\" --generations_jsonl \"$(MED_RESULT_DIR)/generations_llama33_groq.jsonl\"
+
+medication_score_qwen3:
+	@$(PY) -c "import os; os.makedirs(r'$(MED_SCORED_ROOT)/qwen3_groq', exist_ok=True)"
+	@$(PY) main/src/medication_omission_experiment.py --medications_csv \"$(MED_SUBSET_DIR)/medications_subset.csv\" --patients_csv \"$(MED_SUBSET_DIR)/patients_subset.csv\" --max_patients $(MED_MAX_PATIENTS) --seed $(SEED) --out_dir \"$(MED_SCORED_ROOT)/qwen3_groq\" --generations_jsonl \"$(MED_RESULT_DIR)/generations_qwen3_bedrock.jsonl\"
+
+medication_score_gpt41:
+	@$(PY) -c "import os; os.makedirs(r'$(MED_SCORED_ROOT)/gpt41', exist_ok=True)"
+	@$(PY) main/src/medication_omission_experiment.py --medications_csv \"$(MED_SUBSET_DIR)/medications_subset.csv\" --patients_csv \"$(MED_SUBSET_DIR)/patients_subset.csv\" --max_patients $(MED_MAX_PATIENTS) --seed $(SEED) --out_dir \"$(MED_SCORED_ROOT)/gpt41\" --generations_jsonl \"$(MED_RESULT_DIR)/generations_gpt41.jsonl\"
+
+medication_score_gpt51:
+	@$(PY) -c "import os; os.makedirs(r'$(MED_SCORED_ROOT)/gpt51', exist_ok=True)"
+	@$(PY) main/src/medication_omission_experiment.py --medications_csv \"$(MED_SUBSET_DIR)/medications_subset.csv\" --patients_csv \"$(MED_SUBSET_DIR)/patients_subset.csv\" --max_patients $(MED_MAX_PATIENTS) --seed $(SEED) --out_dir \"$(MED_SCORED_ROOT)/gpt51\" --generations_jsonl \"$(MED_RESULT_DIR)/generations_gpt51.jsonl\"
+
+medication_score_claude45:
+	@$(PY) -c "import os; os.makedirs(r'$(MED_SCORED_ROOT)/claude45', exist_ok=True)"
+	@$(PY) main/src/medication_omission_experiment.py --medications_csv \"$(MED_SUBSET_DIR)/medications_subset.csv\" --patients_csv \"$(MED_SUBSET_DIR)/patients_subset.csv\" --max_patients $(MED_MAX_PATIENTS) --seed $(SEED) --out_dir \"$(MED_SCORED_ROOT)/claude45\" --generations_jsonl \"$(MED_RESULT_DIR)/generations_claude_sonnet45.jsonl\"
+
+medication_score_all: medication_score_llama31 medication_score_llama33 medication_score_qwen3 medication_score_gpt41 medication_score_gpt51 medication_score_claude45
+
+medication: medication_models medication_score_all
+
+medication_test: RUN_LIMIT=2
+medication_test: medication
+
 clean:
-	@$(PY) -c "import shutil; shutil.rmtree(r'output/allergy_omission', ignore_errors=True)"
+	@$(PY) -c "import shutil; shutil.rmtree(r'output/allergy_omission', ignore_errors=True); shutil.rmtree(r'output/medication_omission', ignore_errors=True)"
 
 
 
