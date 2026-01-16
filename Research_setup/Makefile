@@ -131,10 +131,10 @@ prepare_medication:
 	@$(PY) -c "import os; os.makedirs(r'$(MED_SUBSET_DIR)', exist_ok=True); os.makedirs(r'$(MED_RESULT_DIR)', exist_ok=True)"
 
 medication_subdataset: prepare_medication
-	@$(PY) data/src/create_medication_omission_dataset.py --medications_csv \"$(MEDICATIONS_SRC)\" --patients_csv \"$(PATIENTS_SRC)\" --n $(N) --seed $(SEED) --out_dir \"$(MED_SUBSET_DIR)\"
+	@$(PY) data/src/create_medication_omission_dataset.py --medications_csv "$(MEDICATIONS_SRC)" --patients_csv "$(PATIENTS_SRC)" --n $(N) --seed $(SEED) --out_dir "$(MED_SUBSET_DIR)"
 
 medication_prompts: medication_subdataset
-	@$(PY) main/src/medication_omission_experiment.py --medications_csv \"$(MED_SUBSET_DIR)/medications_subset.csv\" --patients_csv \"$(MED_SUBSET_DIR)/patients_subset.csv\" --max_patients $(MED_MAX_PATIENTS) --seed $(SEED) --out_dir \"$(MED_RESULT_DIR)\"
+	@$(PY) main/src/medication_omission_experiment.py --medications_csv "$(MED_SUBSET_DIR)/medications_subset.csv" --patients_csv "$(MED_SUBSET_DIR)/patients_subset.csv" --max_patients $(MED_MAX_PATIENTS) --seed $(SEED) --out_dir "$(MED_RESULT_DIR)"
 
 # Model runs (prompts.jsonl -> generations_*.jsonl)
 medication_llama31: medication_prompts
@@ -160,27 +160,27 @@ medication_models: medication_llama31 medication_llama33 medication_qwen3 medica
 # Scoring (generations_*.jsonl -> scored results)
 medication_score_llama31:
 	@$(PY) -c "import os; os.makedirs(r'$(MED_SCORED_ROOT)/llama31_groq', exist_ok=True)"
-	@$(PY) main/src/medication_omission_experiment.py --medications_csv \"$(MED_SUBSET_DIR)/medications_subset.csv\" --patients_csv \"$(MED_SUBSET_DIR)/patients_subset.csv\" --max_patients $(MED_MAX_PATIENTS) --seed $(SEED) --out_dir \"$(MED_SCORED_ROOT)/llama31_groq\" --generations_jsonl \"$(MED_RESULT_DIR)/generations_llama31_groq.jsonl\"
+	@$(PY) main/src/medication_omission_experiment.py --medications_csv "$(MED_SUBSET_DIR)/medications_subset.csv" --patients_csv "$(MED_SUBSET_DIR)/patients_subset.csv" --max_patients $(MED_MAX_PATIENTS) --seed $(SEED) --out_dir "$(MED_SCORED_ROOT)/llama31_groq" --generations_jsonl "$(MED_RESULT_DIR)/generations_llama31_groq.jsonl"
 
 medication_score_llama33:
 	@$(PY) -c "import os; os.makedirs(r'$(MED_SCORED_ROOT)/llama33_groq', exist_ok=True)"
-	@$(PY) main/src/medication_omission_experiment.py --medications_csv \"$(MED_SUBSET_DIR)/medications_subset.csv\" --patients_csv \"$(MED_SUBSET_DIR)/patients_subset.csv\" --max_patients $(MED_MAX_PATIENTS) --seed $(SEED) --out_dir \"$(MED_SCORED_ROOT)/llama33_groq\" --generations_jsonl \"$(MED_RESULT_DIR)/generations_llama33_groq.jsonl\"
+	@$(PY) main/src/medication_omission_experiment.py --medications_csv "$(MED_SUBSET_DIR)/medications_subset.csv" --patients_csv "$(MED_SUBSET_DIR)/patients_subset.csv" --max_patients $(MED_MAX_PATIENTS) --seed $(SEED) --out_dir "$(MED_SCORED_ROOT)/llama33_groq" --generations_jsonl "$(MED_RESULT_DIR)/generations_llama33_groq.jsonl"
 
 medication_score_qwen3:
 	@$(PY) -c "import os; os.makedirs(r'$(MED_SCORED_ROOT)/qwen3_groq', exist_ok=True)"
-	@$(PY) main/src/medication_omission_experiment.py --medications_csv \"$(MED_SUBSET_DIR)/medications_subset.csv\" --patients_csv \"$(MED_SUBSET_DIR)/patients_subset.csv\" --max_patients $(MED_MAX_PATIENTS) --seed $(SEED) --out_dir \"$(MED_SCORED_ROOT)/qwen3_groq\" --generations_jsonl \"$(MED_RESULT_DIR)/generations_qwen3_bedrock.jsonl\"
+	@$(PY) main/src/medication_omission_experiment.py --medications_csv "$(MED_SUBSET_DIR)/medications_subset.csv" --patients_csv "$(MED_SUBSET_DIR)/patients_subset.csv" --max_patients $(MED_MAX_PATIENTS) --seed $(SEED) --out_dir "$(MED_SCORED_ROOT)/qwen3_groq" --generations_jsonl "$(MED_RESULT_DIR)/generations_qwen3_bedrock.jsonl"
 
 medication_score_gpt41:
 	@$(PY) -c "import os; os.makedirs(r'$(MED_SCORED_ROOT)/gpt41', exist_ok=True)"
-	@$(PY) main/src/medication_omission_experiment.py --medications_csv \"$(MED_SUBSET_DIR)/medications_subset.csv\" --patients_csv \"$(MED_SUBSET_DIR)/patients_subset.csv\" --max_patients $(MED_MAX_PATIENTS) --seed $(SEED) --out_dir \"$(MED_SCORED_ROOT)/gpt41\" --generations_jsonl \"$(MED_RESULT_DIR)/generations_gpt41.jsonl\"
+	@$(PY) main/src/medication_omission_experiment.py --medications_csv "$(MED_SUBSET_DIR)/medications_subset.csv" --patients_csv "$(MED_SUBSET_DIR)/patients_subset.csv" --max_patients $(MED_MAX_PATIENTS) --seed $(SEED) --out_dir "$(MED_SCORED_ROOT)/gpt41" --generations_jsonl "$(MED_RESULT_DIR)/generations_gpt41.jsonl"
 
 medication_score_gpt51:
 	@$(PY) -c "import os; os.makedirs(r'$(MED_SCORED_ROOT)/gpt51', exist_ok=True)"
-	@$(PY) main/src/medication_omission_experiment.py --medications_csv \"$(MED_SUBSET_DIR)/medications_subset.csv\" --patients_csv \"$(MED_SUBSET_DIR)/patients_subset.csv\" --max_patients $(MED_MAX_PATIENTS) --seed $(SEED) --out_dir \"$(MED_SCORED_ROOT)/gpt51\" --generations_jsonl \"$(MED_RESULT_DIR)/generations_gpt51.jsonl\"
+	@$(PY) main/src/medication_omission_experiment.py --medications_csv "$(MED_SUBSET_DIR)/medications_subset.csv" --patients_csv "$(MED_SUBSET_DIR)/patients_subset.csv" --max_patients $(MED_MAX_PATIENTS) --seed $(SEED) --out_dir "$(MED_SCORED_ROOT)/gpt51" --generations_jsonl "$(MED_RESULT_DIR)/generations_gpt51.jsonl"
 
 medication_score_claude45:
 	@$(PY) -c "import os; os.makedirs(r'$(MED_SCORED_ROOT)/claude45', exist_ok=True)"
-	@$(PY) main/src/medication_omission_experiment.py --medications_csv \"$(MED_SUBSET_DIR)/medications_subset.csv\" --patients_csv \"$(MED_SUBSET_DIR)/patients_subset.csv\" --max_patients $(MED_MAX_PATIENTS) --seed $(SEED) --out_dir \"$(MED_SCORED_ROOT)/claude45\" --generations_jsonl \"$(MED_RESULT_DIR)/generations_claude_sonnet45.jsonl\"
+	@$(PY) main/src/medication_omission_experiment.py --medications_csv "$(MED_SUBSET_DIR)/medications_subset.csv" --patients_csv "$(MED_SUBSET_DIR)/patients_subset.csv" --max_patients $(MED_MAX_PATIENTS) --seed $(SEED) --out_dir "$(MED_SCORED_ROOT)/claude45" --generations_jsonl "$(MED_RESULT_DIR)/generations_claude_sonnet45.jsonl"
 
 medication_score_all: medication_score_llama31 medication_score_llama33 medication_score_qwen3 medication_score_gpt41 medication_score_gpt51 medication_score_claude45
 

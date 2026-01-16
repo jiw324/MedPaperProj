@@ -316,9 +316,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     )
     ap.add_argument(
         "--generations_jsonl",
-        type=Path,
-        default=Path(""),
-        help="Optional. If provided and exists, load outputs from this generations JSONL and score them.",
+        type=str,
+        default="",
+        help="Optional. If provided and is a file, load outputs from this generations JSONL and score them.",
     )
     args = ap.parse_args(argv)
 
@@ -363,9 +363,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     outputs_by_case: Dict[str, str] = {}
     generations_path = out_dir / "generations.jsonl"
-    if str(args.generations_jsonl).strip() and Path(args.generations_jsonl).exists():
+    gen_path_str = (args.generations_jsonl or "").strip()
+    gen_path = Path(gen_path_str) if gen_path_str else None
+    if gen_path is not None and gen_path.is_file():
         gen_rows: List[Dict[str, Any]] = []
-        for r in iter_jsonl(Path(args.generations_jsonl)):
+        for r in iter_jsonl(gen_path):
             case_id = str(r.get("case_id", ""))
             out_text = r.get("output_text")
             err = r.get("error")

@@ -636,8 +636,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     )
     ap.add_argument(
         "--generations_jsonl",
-        type=Path,
-        default=Path(""),
+        type=str,
+        default="",
         help=(
             "Optional. If provided and exists, load model outputs from this generations JSONL "
             "({case_id, output_text, error?}) and score them. "
@@ -766,10 +766,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 print(f"[progress] generated {i}/{len(cases)} prompts in {elapsed:.1f}s", file=sys.stderr)
 
         _atomic_write_jsonl(generations_path, gen_rows)
-    elif str(args.generations_jsonl).strip() and Path(args.generations_jsonl).exists():
+    elif (args.generations_jsonl or "").strip() and Path((args.generations_jsonl or "").strip()).is_file():
         # AI-SUGGESTION: Current recommended flow: run a model runner separately, then score here.
+        gen_path = Path((args.generations_jsonl or "").strip())
         gen_rows: List[Dict[str, object]] = []
-        for r in iter_jsonl(Path(args.generations_jsonl)):
+        for r in iter_jsonl(gen_path):
             case_id = str(r.get("case_id", ""))
             out_text = r.get("output_text")
             err = r.get("error")
