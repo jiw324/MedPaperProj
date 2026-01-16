@@ -37,7 +37,7 @@ Default output:
 - `Research_setup/output/allergy_omission/results/generations_llama31_groq.jsonl`
 
 Notes:
-- By default, the runner appends: `Don't have a think part in your answer.` to the last user message. To disable: `--no_think_instruction`.
-- By default, the runner removes literal `<think>` / `</think>` tags from `output_text` (but keeps the content). To keep tags: `--keep_think_tags`.
+- The runner is intentionally **pure input → output** (it does not modify prompts and does not do task-specific scoring).
+- If you need different “clean vs attack” wording, generate it in the experiment script (the text inside `prompts.jsonl`).
 
 

@@ -200,7 +200,7 @@ def run_prompts_jsonl(
             continue
         try:
             messages = parse_messages_json(prompt_text)
-            messages = _apply_attack_override(messages=messages, row=row, model=model)
+            # AI-SUGGESTION: Pure I/O runner — do not mutate prompts based on condition/attack metadata.
             res = call_gpt41_chat(
                 messages=messages,
                 model=model,

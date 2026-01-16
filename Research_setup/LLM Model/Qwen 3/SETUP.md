@@ -31,9 +31,8 @@ python "Medical LLM Model/Qwen 3/qwen3_bedrock_runner.py" --limit 2 --max_tokens
 ```
 
 Notes:
-- By default, the runner appends: `Don't have a think part in your answer.` to the last user message for Qwen3.
-- To disable that behavior: pass `--no_think_instruction`.
-- By default, the runner removes literal `<think>` / `</think>` tags from `output_text` (but keeps the content). To keep tags: pass `--keep_think_tags`.
+- The runner is intentionally **pure input → output** (it does not modify prompts and does not do task-specific scoring).
+- If you need different “clean vs attack” wording, generate it in the experiment script (the text inside `prompts.jsonl`).
 
 ### Outputs
 Default output:

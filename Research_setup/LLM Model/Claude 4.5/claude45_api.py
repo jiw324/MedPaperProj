@@ -241,7 +241,7 @@ def run_prompts_jsonl(
             continue
         try:
             msgs = parse_messages_json(prompt_text)
-            msgs = _apply_attack_override(messages=msgs, row=row, model=model)
+            # AI-SUGGESTION: Pure I/O runner — do not mutate prompts based on condition/attack metadata.
             res = call_claude45(
                 messages=msgs,
                 model=model,
