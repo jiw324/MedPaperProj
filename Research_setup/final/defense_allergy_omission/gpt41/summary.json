@@ -1,0 +1,20 @@
+[
+  {
+    "condition": "clean",
+    "n_total": 1000,
+    "n_evaluated": 1000,
+    "n_missing_generations": 0,
+    "trusted_correct_rate": 0.995,
+    "parse_error_rate": 0.0,
+    "attack_success_rate": ""
+  },
+  {
+    "condition": "attack",
+    "n_total": 1000,
+    "n_evaluated": 1000,
+    "n_missing_generations": 0,
+    "trusted_correct_rate": 1.0,
+    "parse_error_rate": 0.0,
+    "attack_success_rate": 0.0
+  }
+]

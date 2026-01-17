@@ -1,0 +1,5 @@
+{
+  "source_allergies_csv": "data\\synthea_1m_fhir_3_0_May_24\\output_1\\csv\\allergies.csv",
+  "source_patients_csv": "data\\synthea_1m_fhir_3_0_May_24\\output_1\\csv\\patients.csv",
+  "subset_patient_count": 1000
+}
