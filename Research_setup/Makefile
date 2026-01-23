@@ -40,20 +40,24 @@ CLAUDE45_MODEL ?= claude-sonnet-4-5
 .PHONY: prepare_allergy allergy_subdataset allergy_prompts
 .PHONY: allergy_prompts_llama31 allergy_prompts_llama33 allergy_prompts_qwen3 allergy_prompts_gpt41 allergy_prompts_gpt51 allergy_prompts_claude45 allergy_prompts_all
 .PHONY: allergy_llama31 allergy_llama33 allergy_qwen3 allergy_gpt41 allergy_gpt51 allergy_claude45 allergy_models
+.PHONY: allergy_models_parallel allergy_parallel
 .PHONY: allergy_score_llama31 allergy_score_llama33 allergy_score_qwen3 allergy_score_gpt41 allergy_score_gpt51 allergy_score_claude45 allergy_score_all
 .PHONY: allergy allergy_test clean
 .PHONY: prepare_medication medication_subdataset medication_prompts
 .PHONY: medication_prompts_llama31 medication_prompts_llama33 medication_prompts_qwen3 medication_prompts_gpt41 medication_prompts_gpt51 medication_prompts_claude45 medication_prompts_all
 .PHONY: medication_llama31 medication_llama33 medication_qwen3 medication_gpt41 medication_gpt51 medication_claude45 medication_models
+.PHONY: medication_models_parallel medication_parallel
 .PHONY: medication_score_llama31 medication_score_llama33 medication_score_qwen3 medication_score_gpt41 medication_score_gpt51 medication_score_claude45 medication_score_all
 .PHONY: medication medication_test
 .PHONY: defense_allergy_prompts_llama31 defense_allergy_prompts_llama33 defense_allergy_prompts_qwen3 defense_allergy_prompts_gpt41 defense_allergy_prompts_gpt51 defense_allergy_prompts_claude45 defense_allergy_prompts_all
 .PHONY: defense_allergy_llama31 defense_allergy_llama33 defense_allergy_qwen3 defense_allergy_gpt41 defense_allergy_gpt51 defense_allergy_claude45 defense_allergy_models
+.PHONY: defense_allergy_models_parallel defense_allergy_parallel
 .PHONY: defense_allergy_score_llama31 defense_allergy_score_llama33 defense_allergy_score_qwen3 defense_allergy_score_gpt41 defense_allergy_score_gpt51 defense_allergy_score_claude45 defense_allergy_score_all
 .PHONY: defense_allergy defense_allergy_test
 .PHONY: defense_allergy_qwen
 .PHONY: defense_medication_prompts_llama31 defense_medication_prompts_llama33 defense_medication_prompts_qwen3 defense_medication_prompts_gpt41 defense_medication_prompts_gpt51 defense_medication_prompts_claude45 defense_medication_prompts_all
 .PHONY: defense_medication_llama31 defense_medication_llama33 defense_medication_qwen3 defense_medication_gpt41 defense_medication_gpt51 defense_medication_claude45 defense_medication_models
+.PHONY: defense_medication_models_parallel defense_medication_parallel
 .PHONY: defense_medication_score_llama31 defense_medication_score_llama33 defense_medication_score_qwen3 defense_medication_score_gpt41 defense_medication_score_gpt51 defense_medication_score_claude45 defense_medication_score_all
 .PHONY: defense_medication defense_medication_test
 .PHONY: defense_medication_qwen
@@ -112,6 +116,11 @@ allergy_claude45: allergy_prompts_claude45
 
 allergy_models: allergy_llama31 allergy_llama33 allergy_qwen3 allergy_gpt41 allergy_gpt51 allergy_claude45
 
+# AI-SUGGESTION: Run the 6 model runners concurrently (subprocess-per-model), instead of sequential make prerequisites.
+# Requires that the model-specific prompt files already exist (allergy_prompts_all).
+allergy_models_parallel: allergy_prompts_all
+	@$(PY) main/src/parallel_model_runs.py --pipeline allergy --root "$(RESULT_DIR)" --limit $(RUN_LIMIT) --max_parallel 6
+
 # -----------------------------
 # Scoring (generations_*.jsonl -> scored results)
 # We write scored outputs under output/allergy_omission/scored/<model>/
@@ -147,6 +156,9 @@ allergy_score_all: allergy_score_llama31 allergy_score_llama33 allergy_score_qwe
 
 # Full pipeline
 allergy: allergy_models allergy_score_all
+
+# AI-SUGGESTION: Full pipeline with parallel model execution.
+allergy_parallel: allergy_models_parallel allergy_score_all
 
 # Smoke-test pipeline (limit 2 prompts)
 allergy_test: RUN_LIMIT=2
@@ -218,6 +230,10 @@ medication_claude45: medication_prompts
 
 medication_models: medication_prompts_all medication_llama31 medication_llama33 medication_qwen3 medication_gpt41 medication_gpt51 medication_claude45
 
+# AI-SUGGESTION: Run the 6 medication model runners concurrently.
+medication_models_parallel: medication_prompts_all
+	@$(PY) main/src/parallel_model_runs.py --pipeline medication --root "$(MED_RESULT_DIR)" --limit $(RUN_LIMIT) --max_parallel 6
+
 # Scoring (generations_*.jsonl -> scored results)
 medication_score_llama31:
 	@$(PY) -c "import os; os.makedirs(r'$(MED_SCORED_ROOT)/llama31_groq', exist_ok=True)"
@@ -246,6 +262,9 @@ medication_score_claude45:
 medication_score_all: medication_score_llama31 medication_score_llama33 medication_score_qwen3 medication_score_gpt41 medication_score_gpt51 medication_score_claude45
 
 medication: medication_models medication_score_all
+
+# AI-SUGGESTION: Full pipeline with parallel model execution.
+medication_parallel: medication_models_parallel medication_score_all
 
 medication_test: RUN_LIMIT=2
 medication_test: medication
@@ -294,6 +313,10 @@ defense_allergy_claude45: defense_allergy_prompts_claude45
 
 defense_allergy_models: defense_allergy_prompts_all defense_allergy_llama31 defense_allergy_llama33 defense_allergy_qwen3 defense_allergy_gpt41 defense_allergy_gpt51 defense_allergy_claude45
 
+# AI-SUGGESTION: Run the 6 defense-allergy model runners concurrently.
+defense_allergy_models_parallel: defense_allergy_prompts_all
+	@$(PY) main/src/parallel_model_runs.py --pipeline defense_allergy --root "$(DEF_ALLERGY_OUT_ROOT)" --limit $(RUN_LIMIT) --max_parallel 6
+
 defense_allergy_score_llama31:
 	@$(PY) main/src/defense_omission_experiment.py --task allergy --model_key llama31_groq --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --items_csv "$(SUBSET_DIR)/allergies_subset.csv" --max_patients $(MAX_PATIENTS) --seed $(SEED) --out_dir "$(DEF_ALLERGY_OUT_ROOT)/llama31_groq" --generations_jsonl "$(DEF_ALLERGY_OUT_ROOT)/llama31_groq/generations_llama31_groq.jsonl"
 
@@ -315,6 +338,9 @@ defense_allergy_score_claude45:
 defense_allergy_score_all: defense_allergy_score_llama31 defense_allergy_score_llama33 defense_allergy_score_qwen3 defense_allergy_score_gpt41 defense_allergy_score_gpt51 defense_allergy_score_claude45
 
 defense_allergy: defense_allergy_models defense_allergy_score_all
+
+# AI-SUGGESTION: Full pipeline with parallel model execution.
+defense_allergy_parallel: defense_allergy_models_parallel defense_allergy_score_all
 
 defense_allergy_test: RUN_LIMIT=2
 defense_allergy_test: MAX_PATIENTS=1
@@ -367,6 +393,10 @@ defense_medication_claude45: defense_medication_prompts_claude45
 
 defense_medication_models: defense_medication_prompts_all defense_medication_llama31 defense_medication_llama33 defense_medication_qwen3 defense_medication_gpt41 defense_medication_gpt51 defense_medication_claude45
 
+# AI-SUGGESTION: Run the 6 defense-medication model runners concurrently.
+defense_medication_models_parallel: defense_medication_prompts_all
+	@$(PY) main/src/parallel_model_runs.py --pipeline defense_medication --root "$(DEF_MED_OUT_ROOT)" --limit $(RUN_LIMIT) --max_parallel 6
+
 defense_medication_score_llama31:
 	@$(PY) main/src/defense_omission_experiment.py --task medication --model_key llama31_groq --patient_ids_txt "$(MED_SUBSET_DIR)/patient_ids.txt" --patients_csv "$(MED_SUBSET_DIR)/patients_subset.csv" --items_csv "$(MED_SUBSET_DIR)/medications_subset.csv" --max_patients $(MED_MAX_PATIENTS) --seed $(SEED) --out_dir "$(DEF_MED_OUT_ROOT)/llama31_groq" --generations_jsonl "$(DEF_MED_OUT_ROOT)/llama31_groq/generations_llama31_groq.jsonl"
 
@@ -388,6 +418,9 @@ defense_medication_score_claude45:
 defense_medication_score_all: defense_medication_score_llama31 defense_medication_score_llama33 defense_medication_score_qwen3 defense_medication_score_gpt41 defense_medication_score_gpt51 defense_medication_score_claude45
 
 defense_medication: defense_medication_models defense_medication_score_all
+
+# AI-SUGGESTION: Full pipeline with parallel model execution.
+defense_medication_parallel: defense_medication_models_parallel defense_medication_score_all
 
 defense_medication_test: RUN_LIMIT=2
 defense_medication_test: MED_MAX_PATIENTS=1

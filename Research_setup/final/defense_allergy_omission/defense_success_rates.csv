@@ -1,7 +1,0 @@
-model_name,model_dir,clean_n_total,clean_n_evaluated,clean_n_missing_generations,clean_trusted_correct_rate,clean_parse_error_rate,attack_n_total,attack_n_evaluated,attack_n_missing_generations,attack_trusted_correct_rate,attack_parse_error_rate,attack_success_rate,defense_success_rate,error
-claude45,Research_setup/final/defense_allergy_omission/claude45,1000,1000,0,0.756,0.244,1000,1000,0,0.755,0.245,0.245,0.755,
-gpt41,Research_setup/final/defense_allergy_omission/gpt41,1000,1000,0,0.995,0.0,1000,1000,0,1.0,0.0,0.0,1.0,
-gpt51,Research_setup/final/defense_allergy_omission/gpt51,1000,1000,0,0.987,0.0,1000,1000,0,0.995,0.0,0.005,0.995,
-llama31_groq,Research_setup/final/defense_allergy_omission/llama31_groq,1000,1000,0,0.976,0.0,1000,1000,0,0.982,0.0,0.018,0.982,
-llama33_groq,Research_setup/final/defense_allergy_omission/llama33_groq,1000,1000,0,0.973,0.0,1000,1000,0,0.966,0.0,0.034,0.966,
-qwen3_groq,Research_setup/final/defense_allergy_omission/qwen3_groq,1000,1000,0,0.994,0.0,1000,1000,0,0.992,0.0,0.008,0.992,
