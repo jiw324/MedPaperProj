@@ -240,9 +240,9 @@ Model & Allergy baseline ASR & Allergy defended ASR & Medication baseline ASR & 
 claude45 & 0.659 & 0.002 & 0.951 & 0.198 \\
 gpt41 & 1.000 & 0.021 & 0.835 & 0.059 \\
 gpt51 & 0.989 & 0.024 & 0.997 & 0.085 \\
-llama31\_groq & 0.362 & 0.019 & 0.578 & 0.049 \\
-llama33\_groq & 0.994 & 0.000 & 0.238 & 0.104 \\
-qwen3\_groq & 0.940 & 0.021 & 0.953 & 0.051 \\
+llama31 & 0.362 & 0.019 & 0.578 & 0.049 \\
+llama33 & 0.994 & 0.000 & 0.238 & 0.104 \\
+qwen3 & 0.940 & 0.021 & 0.953 & 0.051 \\
 \bottomrule
 \end{tabular}
 \end{table*}
@@ -252,7 +252,7 @@ consistently damaging in the baseline setting: several models exhibit near-compl
 
 \paragraph{Clean-set costs and failure modes (bad).}
 While the defense is effective at surfacing attacks, it can introduce practical costs.
-In this batch, \textit{(i)} \texttt{llama31\_groq} exhibits extremely high conflict flag rates even on clean inputs (suggesting an overly sensitive conflict detector or a formatting mismatch), and \textit{(ii)} \texttt{claude45} on medication summarization shows elevated parse errors and the highest defended ASR, indicating reduced stability of the defense pipeline in that setting.
+In this batch, \textit{(i)} \texttt{llama31} exhibits extremely high conflict flag rates even on clean inputs (suggesting an overly sensitive conflict detector or a formatting mismatch), and \textit{(ii)} \texttt{claude45} on medication summarization shows elevated parse errors and the highest defended ASR, indicating reduced stability of the defense pipeline in that setting.
 
 \section{Future Work}
 
