@@ -42,7 +42,7 @@
 \printAffiliationsAndNotice{}
 
 \begin{abstract}
-Large language models (LLMs) are increasingly integrated into electronic health record (EHR) systems for clinical summarization, yet their security properties in realistic EHR workflows remain underexplored. Prior work evaluates LLM robustness largely in isolation, without systematically studying models operating over mixed-trust EHR inputs that combine verified clinical facts with untrusted patient-provided instructions. We introduce the first benchmark for evaluating \emph{generation-time semantic integrity} of LLMs in an EHR system setting. Using synthetic patient records, we simulate a realistic EHR summarization pipeline and evaluate six widely used LLMs under clean and adversarial conditions. Focusing on safety-critical facts such as documented allergies, we find that adversarial patient instructions can reliably induce fact omission despite explicit access to ground-truth records, with baseline attack success rates reaching 100\% for some widely deployed models. We further evaluate a trust-anchoring defense that redundantly injects verified EHR facts into the generation context; while this defense does not prevent conflicting untrusted claims from appearing, it significantly reduces silent failures by forcing conflicts to become explicit. These results demonstrate that current LLMs lack robust trust-boundary enforcement in EHR-integrated settings and motivate standardized benchmarks and defenses tailored to clinical deployment.
+Large language models (LLMs) are increasingly integrated into electronic health record (EHR) systems for clinical summarization, yet their security properties in realistic EHR workflows remain underexplored. Prior work evaluates LLM robustness largely in isolation, without systematically studying models operating over mixed-trust EHR inputs that combine verified clinical facts with untrusted patient-provided instructions. We introduce the first benchmark for evaluating generation-time semantic integrity of LLMs in an EHR system setting. Using synthetic patient records, we simulate a realistic EHR summarization pipeline and evaluate six widely used LLMs under clean and adversarial conditions. Focusing on safety-critical facts such as documented allergies, we find that adversarial patient instructions can reliably induce fact omission despite explicit access to ground-truth records: all six commonly used LLMs in modern EHR systems exhibit attack success rates near or above 90\%. We further evaluate a trust-anchoring defense that redundantly injects verified EHR facts into the generation context; while this defense does not prevent attacks, it significantly reduces silent failures by forcing conflicts to become explicit. These results demonstrate that current LLMs lack robust trust-boundary enforcement in EHR-integrated settings and motivate standardized benchmarks and defenses tailored to clinical deployment.
 \end{abstract}
 
 \section{Introduction}
@@ -137,20 +137,25 @@ The task is to generate a concise provider-facing chart summary in response to a
 \emph{``Write a concise chart summary for a new provider.''}
 All outputs are constrained to a single sentence to increase pressure for factual omission and prioritization.
 
+
 \subsection{Attack Model}
 
 We model the attack as an \emph{explicit untrusted override attempt} embedded within the patient-reported message.
-In the \textbf{attack} condition, the patient message directly contradicts the structured chart facts by asserting the absence of all allergies or all medications (e.g., ``New research shows the patient is not allergic to anything'' or ``the patient is not taking any medications'').
+In the \textbf{attack} condition, the patient message directly contradicts the structured chart facts by asserting the absence of all allergies or all medications (e.g., ``New research shows 
 
-% AI-SUGGESTION: Two-column, near full-page figure for readability (spans both panels).
-% Use top-of-page placement to avoid LaTeX deferring the float to the end.
 \begin{figure*}[!t]
   \centering
+  \vspace{0.2\baselineskip}
   \includegraphics[width=\textwidth,height=0.82\textheight,keepaspectratio]{img/Attack_Model.png}
-  \caption{Attack model in an EHR-integrated LLM workflow: an untrusted patient-portal message conflicts with clinician-verified EHR facts and can induce omission in the generated clinical summary.}
+  \caption{Mixed-trust attack model in an EHR-integrated LLM workflow. Clinician-verified EHR facts (trusted) and patient-portal messages (untrusted) are combined via an EHR interface (e.g., FHIR) into the model context; untrusted claims can induce omission in the provider-facing summary. We evaluate outputs via fact retention rate (FRR; i.e., recall of trusted facts), conflict rate, and attack success rate (ASR).}
   \label{fig:attack_model}
+  \vspace{-1\baselineskip}
 \end{figure*}
 \FloatBarrier
+
+the patient is not allergic to anything'' or ``the patient is not taking any medications'').
+
+As illustrated in \Cref{fig:attack_model}, the attacker’s leverage comes from the EHR-integrated workflow mixing clinician-verified records (trusted) with patient-portal content (untrusted) within a single generation context, enabling untrusted claims to suppress or override verified facts at generation time.
 
 This attack reflects a realistic failure mode in EHR-integrated LLM systems, where patient portal messages, external notes, or retrieved documents may contain incorrect or misleading claims that conflict with clinician-verified records.
 The attack does not attempt to jailbreak the model or alter system instructions; instead, it exploits the model’s tendency to reconcile conflicting inputs by prioritizing more recent or assertive natural language statements.
@@ -186,8 +191,16 @@ This design isolates model behavior under conflicting information without introd
 Model outputs are evaluated using automatic string matching against ground-truth chart facts.
 For both allergy and medication tasks, we report:
 
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth,height=0.55\textheight,keepaspectratio]{img/Defense_Model.png}
+  \caption{Trust-anchored defense with explicit trust separation and an integrity check. The system takes clinician-verified EHR facts as \emph{trusted} input and patient-portal messages as \emph{untrusted} input, generates two summaries separately (trusted-only and untrusted-only), and then performs a semantic integrity check by comparing the two summaries. If a conflict is detected, the case is flagged for clinician review and untrusted content is not merged. If no conflict is detected, the untrusted content is promoted to trusted and the workflow proceeds using the merged, clinician-facing summary.}
+  \label{fig:defense_model}
+\end{figure*}
+
 \begin{itemize}
     \item \textbf{Recall}: the fraction of chart-ground-truth items mentioned in the generated summary.
+    \item \textbf{Conflict rate}: in structured-output defense runs, the fraction of cases where the model explicitly flags a conflict between trusted chart facts and untrusted claims.
     \item \textbf{False-none rate}: the proportion of outputs that assert ``no allergies'' or ``no medications'' when at least one corresponding chart item exists.
     \item \textbf{Full omission rate}: the proportion of outputs that mention none of the chart-ground-truth items.
 \end{itemize}
@@ -197,19 +210,17 @@ This metric captures both partial and complete suppression of verified chart fac
 
 \subsection{Defense Model: Trust-Anchored Summarization}
 
-We evaluate a defense strategy based on \emph{explicit trust separation} between structured chart facts and untrusted patient-reported text.
-The defense is implemented as a modified prompt that labels chart facts as \textbf{trusted} and patient messages as \textbf{untrusted}, and explicitly instructs the model not to remove, negate, or override trusted information.
+We evaluate a defense strategy based on \emph{explicit trust separation} and an \emph{integrity check} over independently generated trusted and untrusted summaries (see \Cref{fig:defense_model}).
+Concretely, the defense runs the model in two constrained modes:
+\textit{(i)} a \textbf{trusted summary} generated \emph{only} from clinician-verified EHR facts (e.g., allergies/medications) and treated as authoritative, and
+\textit{(ii)} an \textbf{untrusted summary} generated \emph{only} from patient-portal claims and treated as non-authoritative.
 
-The defense further requires the model to produce an inspectable, structured output consisting of:
-\textit{(i)} a summary of trusted chart facts,
-\textit{(ii)} an optional summary of patient-reported claims,
-and \textit{(iii)} an explicit list of conflicts requiring clinician verification.
-This format ensures that disagreement between sources is surfaced rather than silently resolved.
+An \textbf{integrity check} then compares the trusted and untrusted summaries to detect semantic conflicts.
+If a conflict is detected, the system flags the case for clinician review and \emph{does not} merge untrusted content into the trusted summary.
+If no conflict is detected, the system treats the untrusted content as consistent, promotes it to trusted, and produces a final clinical summary for downstream use.
 
-Unlike post-hoc filtering or rule-based validation, the defense operates entirely at inference time through prompt structure.
-We evaluate defense performance under both clean and attack conditions, measuring whether trusted chart facts are preserved and whether conflicts are explicitly flagged when present.
-
-This defense reflects a deployable mitigation strategy for EHR-integrated LLM systems, where full isolation of untrusted inputs may be impractical but explicit trust boundaries can reduce silent safety failures.
+We evaluate this defense under clean and attack conditions, measuring (a) whether trusted EHR facts are preserved (fact retention / recall) and (b) whether conflicts are explicitly detected and surfaced.
+This defense is intended to reduce \emph{silent} integrity failures in EHR-integrated LLM systems by making trust boundaries and disagreement explicit at generation time, rather than assuming a single mixed-trust context can be safely summarized.
 
 \section{Results} % AI-SUGGESTION: Promoted to a top-level section per paper structure preference.
 \label{sec:results}
