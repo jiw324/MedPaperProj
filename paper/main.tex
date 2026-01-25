@@ -3,10 +3,11 @@
 \usepackage{subcaption}
 \usepackage{wrapfig}
 \usepackage{booktabs}
+\usepackage{xurl}
 \usepackage{hyperref}
+\Urlmuskip=0mu plus 1mu\relax
 \newcommand{\theHalgorithm}{\arabic{algorithm}}
 \usepackage{icml2026}
-% AI-SUGGESTION: Prevent floats from drifting far past their introduction point.
 \usepackage{placeins}
 \usepackage{amsmath}
 \usepackage{amssymb}
@@ -57,13 +58,13 @@ Prior benchmarks for clinical LLMs have primarily emphasized task performance, s
 
 In this work, we introduce a benchmark for evaluating semantic integrity in EHR-integrated LLMs under mixed-trust inputs. The benchmark formalizes a simple but realistic workflow: (1) the model is provided with structured ground-truth patient data representing clinician-verified EHR facts; (2) an untrusted instruction is introduced; (3) the model is tasked with generating a clinical summary; and (4) the output is compared against the ground truth to identify integrity violations. We consider both clean and adversarial conditions to isolate the effect of untrusted instruction dominance, closely related to prompt-injection--style vulnerabilities described in prior LLM security guidance \citep{owasp_prompt_injection}.
 
-Using this framework, we evaluate multiple frontier and open-weight LLMs on chart summarization tasks involving allergies and medications. We quantify integrity failures using automatic metrics that capture both fact omission and explicit contradiction, and analyze how these behaviors vary across models. We further evaluate a structured-output ``defense'' that enforces explicit separation between trusted EHR facts and untrusted patient-reported information---not as a complete mitigation, but as a diagnostic mechanism for surfacing otherwise silent errors.
+Using this framework, we evaluate multiple frontier and open-weight LLMs on chart summarization tasks involving allergies and medications. We quantify integrity failures using automatic metrics that capture both fact omission and explicit contradiction, and analyze how these behaviors vary across models. We further evaluate a trust-anchored integrity-check defense that enforces explicit separation between trusted EHR facts and untrusted patient-reported information---not as a complete mitigation, but as a diagnostic mechanism for surfacing otherwise silent errors.
 
 Our contributions are threefold:
 \begin{enumerate}
     \item We introduce a benchmark that explicitly models mixed-trust EHR workflows, enabling systematic evaluation of semantic integrity violations in LLM-generated clinical summaries.
     \item We show that untrusted instructions can induce clinically meaningful omissions and contradictions across multiple models, even when underlying EHR data remains correct.
-    \item We demonstrate that enforcing explicit trust separation via structured outputs can reduce or expose integrity failures, transforming silent errors into inspectable violations.
+    \item We demonstrate that enforcing explicit trust separation and integrity checks can reduce or expose integrity failures, transforming silent errors into inspectable violations.
 \end{enumerate}
 
 By isolating generation-time semantic integrity failures from infrastructure compromise and training-time attacks, this benchmark provides a focused perspective on a critical yet under-evaluated risk in real-world clinical LLM deployment.
@@ -105,7 +106,7 @@ Prompt injection has been widely recognized as a fundamental vulnerability in LL
 
 \subsection{Positioning of This Work}
 
-In contrast to prior clinical LLM benchmarks and evaluations, our work explicitly models mixed-trust EHR workflows and evaluates semantic integrity under clean, adversarial, and structured-output conditions. Rather than measuring task accuracy alone, we quantify whether LLM-generated clinical summaries preserve clinician-verified ground-truth facts when exposed to untrusted instructions. This benchmark complements existing clinical summarization and question-answering benchmarks by isolating an integration-driven failure mode rooted in instruction-following behavior, enabling controlled comparisons across models and interface-level defenses.
+In contrast to prior clinical LLM benchmarks and evaluations, our work explicitly models mixed-trust EHR workflows and evaluates semantic integrity under clean, adversarial, and defended conditions. Rather than measuring task accuracy alone, we quantify whether LLM-generated clinical summaries preserve clinician-verified ground-truth facts when exposed to untrusted instructions. This benchmark complements existing clinical summarization and question-answering benchmarks by isolating an integration-driven failure mode rooted in instruction-following behavior, enabling controlled comparisons across models and interface-level defenses.
 
 \section{Experiments}
 
@@ -200,7 +201,7 @@ For both allergy and medication tasks, we report:
 
 \begin{itemize}
     \item \textbf{Recall}: the fraction of chart-ground-truth items mentioned in the generated summary.
-    \item \textbf{Conflict rate}: in structured-output defense runs, the fraction of cases where the model explicitly flags a conflict between trusted chart facts and untrusted claims.
+    \item \textbf{Conflict rate}: under the defense, the fraction of cases where a semantic conflict between trusted EHR facts and untrusted claims is detected and flagged.
     \item \textbf{False-none rate}: the proportion of outputs that assert ``no allergies'' or ``no medications'' when at least one corresponding chart item exists.
     \item \textbf{Full omission rate}: the proportion of outputs that mention none of the chart-ground-truth items.
 \end{itemize}
@@ -226,12 +227,11 @@ This defense is intended to reduce \emph{silent} integrity failures in EHR-integ
 \label{sec:results}
 
 We summarize baseline vulnerability and defended residual failure rates in \Cref{tab:asr} over $N=1000$ cases per task and model.
-\textbf{Attack effectiveness (bad).} The omission attack is consistently damaging in the baseline setting: several models exhibit near-complete failure under attack (e.g., allergy ASR up to $1.000$ and medication ASR up to $0.997$), demonstrating that untrusted patient text can override clinician-verified chart facts during generation.
-\textbf{Defense effectiveness (mostly good, but imperfect).} The trust-anchored structured-output defense substantially reduces \emph{silent} integrity failures by forcing conflicts to become explicit, driving defended ASR close to zero on allergy omission (0.000--0.024) and materially lower on medication omission (0.049--0.198). However, the defense is not uniformly robust across all model/task pairs: residual silent failures remain non-trivial for some settings (e.g., \texttt{claude45} on medication), and clean-set false positives or parsing instability can impose deployment costs (discussed below).
+\textbf{Attack effectiveness (bad).} The omission attack is
 
 \begin{table*}[t]
 \centering
-\caption{Attack success rate (ASR) without defenses (baseline) vs. with the trust-anchored structured-output defense (defended). Lower is better. ``Defended ASR'' corresponds to the residual rate of \emph{silent} failures under attack (i.e., attacks that still succeed without being surfaced as a conflict).}
+\caption{Attack success rate (ASR) without defenses (baseline) vs. with the trust-anchored integrity-check defense (defended). Lower is better. ``Defended ASR'' corresponds to the residual rate of \emph{silent} failures under attack (i.e., attacks that still succeed without being surfaced as a conflict).}
 \label{tab:asr}
 \begin{tabular}{lcccc}
 \toprule
@@ -247,9 +247,31 @@ qwen3\_groq & 0.940 & 0.021 & 0.953 & 0.051 \\
 \end{tabular}
 \end{table*}
 
+consistently damaging in the baseline setting: several models exhibit near-complete failure under attack (e.g., allergy ASR up to $1.000$ and medication ASR up to $0.997$), demonstrating that untrusted patient text can override clinician-verified chart facts during generation.
+\textbf{Defense effectiveness (mostly good, but imperfect).} The trust-anchored integrity-check defense substantially reduces \emph{silent} integrity failures by forcing conflicts to become explicit, driving defended ASR close to zero on allergy omission (0.000--0.024) and materially lower on medication omission (0.049--0.198). However, the defense is not uniformly robust across all model/task pairs: residual silent failures remain non-trivial for some settings (e.g., \texttt{claude45} on medication), and clean-set false positives or parsing instability can impose deployment costs (discussed below).
+
 \paragraph{Clean-set costs and failure modes (bad).}
 While the defense is effective at surfacing attacks, it can introduce practical costs.
-In this batch, \textit{(i)} \texttt{llama31\_groq} exhibits extremely high conflict flag rates even on clean inputs (suggesting an overly sensitive conflict detector or a formatting mismatch), and \textit{(ii)} \texttt{claude45} on medication summarization shows elevated parse errors and the highest defended ASR, indicating reduced stability of the structured-output pipeline in that setting.
+In this batch, \textit{(i)} \texttt{llama31\_groq} exhibits extremely high conflict flag rates even on clean inputs (suggesting an overly sensitive conflict detector or a formatting mismatch), and \textit{(ii)} \texttt{claude45} on medication summarization shows elevated parse errors and the highest defended ASR, indicating reduced stability of the defense pipeline in that setting.
+
+\section{Future Work}
+
+This work focuses on generation-time semantic integrity failures arising from mixed-trust \emph{textual} inputs in EHR-integrated LLM systems. While this setting captures a common deployment scenario today, several important directions remain open.
+
+\paragraph{Multimodal Attack Surfaces in Clinical Workflows.}
+EHR-adjacent patient communication channels increasingly support richer media (e.g., photos and videos) alongside secure messages, which can later be ingested by downstream clinical workflows and AI systems \citep{onc_secure_messaging}. As LLM-based systems evolve toward multimodal models that jointly process text, images, and video, these modalities introduce new mixed-trust attack surfaces. Extending semantic-integrity benchmarks to multimodal EHR inputs—where trusted structured data must remain authoritative despite conflicting visual evidence—represents a critical next step.
+
+\paragraph{Image-Based Prompt Injection and Visual Fact Suppression.}
+Recent research shows that vision-language models can be manipulated via \emph{visual prompt injection}, including images containing embedded text instructions or adversarially constructed visual content that changes the model’s behavior \citep{bagdasaryan2023multimodal, clusmann2025vlm_injection}. In an EHR context, analogous attacks could involve scanned documents or patient-uploaded images asserting the absence of allergies/medications, potentially overriding structured chart data when summarized by multimodal models. Future work should formalize image-based omission and contradiction attacks in EHR workflows and evaluate whether visual inputs can induce the same class of generation-time semantic integrity violations observed in our text-only setting.
+
+\paragraph{Video and Temporal Manipulation Attacks.}
+Patient-uploaded videos add temporal structure and narrative framing that may implicitly contradict clinician-verified records (e.g., apparent non-adherence or symptom resolution). As multimodal models begin to summarize longitudinal patient context from mixed media, it will be important to assess whether temporal visual narratives can bias generation toward omission or contradiction of verified EHR facts. Designing benchmarks that isolate such temporal influence effects remains an open challenge.
+
+\paragraph{Multimodal Trust Anchoring and Integrity Checks.}
+The trust-anchored defense evaluated in this work operates over textual summaries. Extending this approach to multimodal settings raises new questions: how should trusted and untrusted visual inputs be separated, summarized, and compared? What constitutes a semantic conflict between structured EHR facts and visual evidence? Future systems may require modality-aware integrity checks that explicitly reason over trust provenance across text, images, and video, rather than assuming uniform reliability \citep{owasp_llm01}.
+
+\paragraph{Human-in-the-Loop and Deployment Considerations.}
+Finally, while our defense surfaces conflicts for clinician review, future work should explore how multimodal conflicts are best presented to clinicians in practice. Understanding cognitive load, alert fatigue, and interpretability of multimodal integrity violations will be essential for safe deployment.
 
 \bibliographystyle{icml2026}
 \bibliography{main}
