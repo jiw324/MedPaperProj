@@ -1,3 +1,11 @@
 # AI-SUGGESTION: Ignore generated research datasets; remove if versioning raw data is needed.
-Research_setup/data/synthea_1m_fhir_3_0_May_24
+Research_setup/data/synthea_1m_fhir_3_0_May_24/
 
+# AI-SUGGESTION: Ignore experiment outputs / caches / run artifacts.
+Research_setup/output/
+Research_setup/main/src/__pycache__/
+**/__pycache__/
+*.pyc
+
+# AI-SUGGESTION: Ignore large run folders (keep if you intend to version final artifacts).
+Research_setup/final/

@@ -1,0 +1,10 @@
+# AI-SUGGESTION: Normalize line endings to avoid huge diffs on Windows.
+# Keep repository text files in LF; Git will convert to CRLF in the working tree if core.autocrlf=true.
+
+* text=auto
+
+*.py text eol=lf
+Makefile text eol=lf
+*.tex text eol=lf
+*.bib text eol=lf
+
