@@ -2,6 +2,8 @@
 \usepackage{microtype}
 \usepackage{graphicx}
 \usepackage{subcaption}
+% AI-SUGGESTION: Enable compact, text-wrapping figures to reduce vertical space usage.
+\usepackage{wrapfig}
 \usepackage{booktabs}
 \usepackage{hyperref}
 \newcommand{\theHalgorithm}{\arabic{algorithm}}
@@ -39,7 +41,7 @@
 \printAffiliationsAndNotice{}
 
 \begin{abstract}
-Large language models (LLMs) are increasingly integrated into electronic health record (EHR) systems for clinical summarization, yet their security properties in realistic EHR workflows remain underexplored. Prior work evaluates LLM robustness largely in isolation, without systematically studying models operating over mixed-trust EHR inputs that combine verified clinical facts with untrusted patient-provided instructions. We introduce the first benchmark for evaluating \emph{generation-time semantic integrity} of LLMs in an EHR system setting. Using synthetic patient records, we simulate a realistic EHR summarization pipeline and evaluate six widely used LLMs under clean and adversarial conditions. Focusing on safety-critical facts such as documented allergies, we find that adversarial patient instructions can reliably induce fact omission despite explicit access to ground-truth records: all six commonly used LLMs in modern EHR systems exhibit attack success rates near or above 90\%. We further evaluate a trust-anchoring defense that redundantly injects verified EHR facts into the generation context; while this defense does not prevent attacks, it significantly reduces silent failures by forcing conflicts to become explicit. These results demonstrate that current LLMs lack robust trust-boundary enforcement in EHR-integrated settings and motivate standardized benchmarks and defenses tailored to clinical deployment.
+Large language models (LLMs) are increasingly integrated into electronic health record (EHR) systems for clinical summarization, yet their security properties in realistic EHR workflows remain underexplored. Prior work evaluates LLM robustness largely in isolation, without systematically studying models operating over mixed-trust EHR inputs that combine verified clinical facts with untrusted patient-provided instructions. We introduce the first benchmark for evaluating \emph{generation-time semantic integrity} of LLMs in an EHR system setting. Using synthetic patient records, we simulate a realistic EHR summarization pipeline and evaluate six widely used LLMs under clean and adversarial conditions. Focusing on safety-critical facts such as documented allergies, we find that adversarial patient instructions can reliably induce fact omission despite explicit access to ground-truth records, with baseline attack success rates reaching 100\% for some widely deployed models. We further evaluate a trust-anchoring defense that redundantly injects verified EHR facts into the generation context; while this defense does not prevent conflicting untrusted claims from appearing, it significantly reduces silent failures by forcing conflicts to become explicit. These results demonstrate that current LLMs lack robust trust-boundary enforcement in EHR-integrated settings and motivate standardized benchmarks and defenses tailored to clinical deployment.
 \end{abstract}
 
 \section{Introduction}
@@ -71,6 +73,16 @@ By isolating generation-time semantic integrity failures from infrastructure com
 Modern EHR systems store heterogeneous clinical information, including both structured fields (e.g., diagnoses, medications, allergies, vital signs, and laboratory measurements) and unstructured narrative content (e.g., clinician notes, discharge summaries, and imaging reports) \citep{ehrenstein2019obtaining,kim2023challenges}. In parallel, many health systems support patient-facing portals that enable patients to access portions of their record and communicate with care teams through secure messaging \citep{onc_secure_messages,ahrq_secure_messaging}. As a result, routine clinical workflows frequently involve reviewing and synthesizing information that originates from different documentation channels and differs in format, granularity, and verification status.
 
 In practice, EHR interfaces and surrounding applications often present clinicians with curated views that combine structured record elements with free-text documentation and message threads. This mixed presentation is particularly common in documentation workflows, where clinicians reconcile discrete chart facts with contextual narrative text and recent communications. The resulting record is used for ongoing care coordination, clinical decision-making, and longitudinal documentation \citep{wang2023ehr_source}.
+We refer to this EHR-integrated workflow throughout the paper; \Cref{fig:ehr_system} provides the corresponding high-level system context for our mixed-trust threat model.
+
+\begin{figure}[t]
+  \centering
+  \vspace{1\baselineskip}
+  \includegraphics[width=\columnwidth,keepaspectratio]{img/EHR_System.png}
+  \caption{High-level schematic of an EHR-integrated LLM workflow, where clinician-verified EHR data and live user interactions can jointly influence LLM outputs used for downstream clinical, educational, and research tasks \citep{rgLLMEHRFig3_378394229}.}
+  \label{fig:ehr_system}
+  \vspace{-1\baselineskip}
+\end{figure}
 
 \section{Related Work}
 
@@ -187,6 +199,35 @@ Unlike post-hoc filtering or rule-based validation, the defense operates entirel
 We evaluate defense performance under both clean and attack conditions, measuring whether trusted chart facts are preserved and whether conflicts are explicitly flagged when present.
 
 This defense reflects a deployable mitigation strategy for EHR-integrated LLM systems, where full isolation of untrusted inputs may be impractical but explicit trust boundaries can reduce silent safety failures.
+
+\section{Results} % AI-SUGGESTION: Promoted to a top-level section per paper structure preference.
+\label{sec:results}
+
+We summarize baseline vulnerability and defended residual failure rates in \Cref{tab:asr} over $N=1000$ cases per task and model.
+\textbf{Attack effectiveness (bad).} The omission attack is consistently damaging in the baseline setting: several models exhibit near-complete failure under attack (e.g., allergy ASR up to $1.000$ and medication ASR up to $0.997$), demonstrating that untrusted patient text can override clinician-verified chart facts during generation.
+\textbf{Defense effectiveness (mostly good, but imperfect).} The trust-anchored structured-output defense substantially reduces \emph{silent} integrity failures by forcing conflicts to become explicit, driving defended ASR close to zero on allergy omission (0.000--0.024) and materially lower on medication omission (0.049--0.198). However, the defense is not uniformly robust across all model/task pairs: residual silent failures remain non-trivial for some settings (e.g., \texttt{claude45} on medication), and clean-set false positives or parsing instability can impose deployment costs (discussed below).
+
+\begin{table*}[t]
+\centering
+\caption{Attack success rate (ASR) without defenses (baseline) vs. with the trust-anchored structured-output defense (defended). Lower is better. ``Defended ASR'' corresponds to the residual rate of \emph{silent} failures under attack (i.e., attacks that still succeed without being surfaced as a conflict).}
+\label{tab:asr}
+\begin{tabular}{lcccc}
+\toprule
+Model & Allergy baseline ASR & Allergy defended ASR & Medication baseline ASR & Medication defended ASR \\
+\midrule
+claude45 & 0.659 & 0.002 & 0.951 & 0.198 \\
+gpt41 & 1.000 & 0.021 & 0.835 & 0.059 \\
+gpt51 & 0.989 & 0.024 & 0.997 & 0.085 \\
+llama31\_groq & 0.362 & 0.019 & 0.578 & 0.049 \\
+llama33\_groq & 0.994 & 0.000 & 0.238 & 0.104 \\
+qwen3\_groq & 0.940 & 0.021 & 0.953 & 0.051 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\paragraph{Clean-set costs and failure modes (bad).}
+While the defense is effective at surfacing attacks, it can introduce practical costs.
+In this batch, \textit{(i)} \texttt{llama31\_groq} exhibits extremely high conflict flag rates even on clean inputs (suggesting an overly sensitive conflict detector or a formatting mismatch), and \textit{(ii)} \texttt{claude45} on medication summarization shows elevated parse errors and the highest defended ASR, indicating reduced stability of the structured-output pipeline in that setting.
 
 \bibliographystyle{icml2026}
 \bibliography{main}
