@@ -1,18 +1,19 @@
 \documentclass{article}
-\usepackage{microtype}
 \usepackage{graphicx}
 \usepackage{subcaption}
-% AI-SUGGESTION: Enable compact, text-wrapping figures to reduce vertical space usage.
 \usepackage{wrapfig}
 \usepackage{booktabs}
 \usepackage{hyperref}
 \newcommand{\theHalgorithm}{\arabic{algorithm}}
 \usepackage{icml2026}
+% AI-SUGGESTION: Prevent floats from drifting far past their introduction point.
+\usepackage{placeins}
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{mathtools}
 \usepackage{amsthm}
 \usepackage[capitalize,noabbrev]{cleveref}
+\usepackage{microtype}
 \theoremstyle{plain}
 \newtheorem{theorem}{Theorem}[section]
 \newtheorem{proposition}[theorem]{Proposition}
@@ -77,11 +78,11 @@ We refer to this EHR-integrated workflow throughout the paper; \Cref{fig:ehr_sys
 
 \begin{figure}[t]
   \centering
-  \vspace{1\baselineskip}
+  \vspace{1.5\baselineskip}
   \includegraphics[width=\columnwidth,keepaspectratio]{img/EHR_System.png}
   \caption{High-level schematic of an EHR-integrated LLM workflow, where clinician-verified EHR data and live user interactions can jointly influence LLM outputs used for downstream clinical, educational, and research tasks \citep{rgLLMEHRFig3_378394229}.}
   \label{fig:ehr_system}
-  \vspace{-1\baselineskip}
+  \vspace{-1.5\baselineskip}
 \end{figure}
 
 \section{Related Work}
@@ -140,6 +141,16 @@ All outputs are constrained to a single sentence to increase pressure for factua
 
 We model the attack as an \emph{explicit untrusted override attempt} embedded within the patient-reported message.
 In the \textbf{attack} condition, the patient message directly contradicts the structured chart facts by asserting the absence of all allergies or all medications (e.g., ``New research shows the patient is not allergic to anything'' or ``the patient is not taking any medications'').
+
+% AI-SUGGESTION: Two-column, near full-page figure for readability (spans both panels).
+% Use top-of-page placement to avoid LaTeX deferring the float to the end.
+\begin{figure*}[!t]
+  \centering
+  \includegraphics[width=\textwidth,height=0.82\textheight,keepaspectratio]{img/Attack_Model.png}
+  \caption{Attack model in an EHR-integrated LLM workflow: an untrusted patient-portal message conflicts with clinician-verified EHR facts and can induce omission in the generated clinical summary.}
+  \label{fig:attack_model}
+\end{figure*}
+\FloatBarrier
 
 This attack reflects a realistic failure mode in EHR-integrated LLM systems, where patient portal messages, external notes, or retrieved documents may contain incorrect or misleading claims that conflict with clinician-verified records.
 The attack does not attempt to jailbreak the model or alter system instructions; instead, it exploits the model’s tendency to reconcile conflicting inputs by prioritizing more recent or assertive natural language statements.
