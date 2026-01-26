@@ -43,7 +43,7 @@
 \printAffiliationsAndNotice{}
 
 \begin{abstract}
-Large language models (LLMs) are increasingly integrated into electronic health record (EHR) systems for clinical summarization, yet their security properties in realistic EHR workflows remain underexplored. Prior work evaluates LLM robustness largely in isolation, without systematically studying models operating over mixed-trust EHR inputs that combine verified clinical facts with untrusted patient-provided instructions. We introduce the first benchmark for evaluating generation-time semantic integrity of LLMs in an EHR system setting. Using synthetic patient records, we simulate a realistic EHR summarization pipeline and evaluate six widely used LLMs under clean and adversarial conditions. Focusing on safety-critical facts such as documented allergies, we find that adversarial patient instructions can reliably induce fact omission despite explicit access to ground-truth records: all six commonly used LLMs in modern EHR systems exhibit attack success rates near or above 90\%. We further evaluate a trust-anchoring defense that redundantly injects verified EHR facts into the generation context; while this defense does not prevent attacks, it significantly reduces silent failures by forcing conflicts to become explicit. These results demonstrate that current LLMs lack robust trust-boundary enforcement in EHR-integrated settings and motivate standardized benchmarks and defenses tailored to clinical deployment.
+Large language models (LLMs) are increasingly integrated into electronic health record (EHR) systems for clinical summarization, yet their security properties in realistic EHR workflows remain underexplored. Prior work evaluates LLM robustness largely in isolation, without systematically studying models operating over mixed-trust EHR inputs that combine verified clinical facts with untrusted patient-provided instructions. We introduce the benchmark for evaluating generation-time semantic integrity of LLMs in an EHR system setting. Using synthetic patient records, we simulate a realistic EHR summarization pipeline and evaluate six widely used LLMs under clean and adversarial conditions. Focusing on safety-critical facts such as documented allergies, we find that adversarial patient instructions can reliably induce fact omission despite explicit access to ground-truth records: all six commonly used LLMs in modern EHR systems exhibit attack success rates near or above 90\%. We further evaluate a trust-anchoring defense that redundantly injects verified EHR facts into the generation context; while this defense does not prevent attacks, it significantly reduces silent failures by forcing conflicts to become explicit. These results demonstrate that current LLMs lack robust trust-boundary enforcement in EHR-integrated settings and motivate standardized benchmarks and defenses tailored to clinical deployment.
 \end{abstract}
 
 \section{Introduction}
@@ -91,23 +91,6 @@ We refer to this EHR-integrated workflow throughout the paper; \Cref{fig:ehr_sys
 \subsection{LLMs for Clinical Documentation}
 
 Large language models have been increasingly explored for clinical documentation tasks, including note drafting, chart summarization, and discharge or handoff summaries \citep{woo2025scoping,bednarczyk2025summarization}. Recent work has introduced datasets and evaluation protocols targeting longitudinal hospital-course and discharge-style summarization, enabling systematic comparison of model outputs on clinically grounded tasks \citep{aali2024mimicivbhc}. These efforts primarily assess linguistic quality, clinical coverage, and usefulness of generated summaries, but generally assume that all model inputs are equally trusted and do not evaluate behavior under conflicting or untrusted instructions.
-
-\begin{table}[t]
-\centering
-\small
-\setlength{\tabcolsep}{5pt}
-\caption{Clinical documentation works referenced in \Cref{sec:setting} and Related Work.}
-\label{tab:clinical_doc_related_work}
-\begin{tabular}{p{0.24\columnwidth} p{0.20\columnwidth} p{0.48\columnwidth}}
-\toprule
-Reference & Type & What it covers \\
-\midrule
-\citep{woo2025scoping} & Scoping review & Surveys LLM use in clinical documentation workflows (e.g., drafting and summarization) and discusses opportunities/risks. \\
-\citep{bednarczyk2025summarization} & Review & Reviews evidence for clinical text summarization with LLMs, focusing on summarization quality and evaluation practices. \\
-\citep{aali2024mimicivbhc} & Dataset/benchmark & Hospital-course and discharge-style summarization benchmark enabling systematic comparisons across models on clinically grounded summarization tasks. \\
-\bottomrule
-\end{tabular}
-\end{table}
 
 \subsection{Clinical Benchmarks for EHR-Centered Language Tasks}
 
