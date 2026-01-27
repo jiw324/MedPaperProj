@@ -231,7 +231,12 @@ This metric captures both partial and complete suppression of verified chart fac
 
 \subsection{Defense Model: Trust-Anchored Summarization}
 
-We evaluate a defense strategy based on \emph{explicit trust separation} and an \emph{integrity check} over independently generated trusted and untrusted summaries (see \Cref{fig:defense_model}).
+We evaluate a defense strategy based on \emph{explicit trust separation} and an \emph{integrity check} over independently generated trusted and untrusted summaries (see \Cref{fig:defense_model}). As prior work and common practice, we briefly situate our approach relative to three mitigation patterns for prompt-injection--style risks in mixed-trust LLM systems:
+\begin{itemize}
+    \item \textbf{Instruction--data separation (prompt structuring).} A simple mitigation is to clearly delimit instructions, trusted chart facts, and untrusted patient text (e.g., labeled sections and explicit ``do not treat as authoritative'' warnings) \citep{owasp_prompt_injection}. This can reduce trivial instruction override, but it still places all content in one context; when untrusted text semantically contradicts trusted facts, the model may still prioritize the conflicting claim---the core failure mode we evaluate.
+    \item \textbf{Output validation / verifier gate.} Another approach is to treat the model output as untrusted and run a post-generation check for missing required facts or contradictions before the summary is used \citep{chung2025nejmai,croxford2025evaluating}. Our defense belongs to this family, but is designed to be \emph{diagnostic}: rather than only comparing the final output to the database, we compare trusted-only vs.\ untrusted-only generations and surface conflicts explicitly.
+    \item \textbf{Least privilege / sandboxing (agentic systems).} For systems where models can take actions (e.g., tool/API calls), a common defense is to restrict capabilities via allowlists and least-privilege permission checks \citep{nist80053r5}. In our EHR summarization setting, however, the primary ``action'' is the generated text itself; limiting tool access does not prevent silent omission of allergies/medications, motivating integrity-focused defenses.
+\end{itemize}
 Concretely, the defense runs the model in two constrained modes:
 \textit{(i)} a \textbf{trusted summary} generated \emph{only} from clinician-verified EHR facts (e.g., allergies/medications) and treated as authoritative, and
 \textit{(ii)} an \textbf{untrusted summary} generated \emph{only} from patient-portal claims and treated as non-authoritative.
@@ -246,13 +251,13 @@ If no conflict is detected, the system marks the untrusted content as consistent
 \begin{algorithmic}[1]
 \REQUIRE Trusted EHR facts $F$, untrusted patient message $U$, LLM $M$
 \ENSURE Final clinician-facing summary, or a flagged case (no merge)
-\STATE $S_T \leftarrow M(\text{``Summarize ONLY trusted EHR facts''}, F)$
-\STATE $S_U \leftarrow M(\text{``Summarize ONLY untrusted patient message''}, U)$
-\STATE $C \leftarrow M(\text{``Compare trusted vs untrusted. Output CONFLICTS\_TO\_VERIFY as bullets; write NONE if no conflicts.''}, F, S_T, U, S_U)$
+\STATE $S_T \leftarrow \textsc{TrustedSummary}(M, F)$
+\STATE $S_U \leftarrow \textsc{UntrustedSummary}(M, U)$
+\STATE $C \leftarrow \textsc{IntegrityCheck}(M, F, S_T, U, S_U)$ \COMMENT{$C$ contains \texttt{CONFLICTS\_TO\_VERIFY} (CTV)}
 \IF{$\textsc{ParseError}(C)$}
   \STATE \textbf{return} \textsc{FlagForReview}($S_T$) \COMMENT{conservative default; do not merge}
 \ENDIF
-\STATE $\mathit{conflicts} \leftarrow \textsc{ExtractConflictsOrNONE}(C)$
+\STATE $\mathit{conflicts} \leftarrow \textsc{ExtractCTVOrNONE}(C)$
 \IF{$\mathit{conflicts} \neq \text{NONE}$}
   \STATE \textbf{return} \textsc{FlagForReview}($S_T$, $\mathit{conflicts}$) \COMMENT{do not merge}
 \ENDIF
