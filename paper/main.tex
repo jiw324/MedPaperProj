@@ -240,6 +240,26 @@ An \textbf{integrity check} then compares the trusted and untrusted summaries to
 If a conflict is detected, the system flags the case for clinician review and \emph{does not} merge untrusted content into the trusted summary.
 If no conflict is detected, the system marks the untrusted content as consistent with the checked chart facts and eligible to merge as non-contradictory patient-reported context, producing a final clinician-facing summary for downstream use.
 
+\begin{algorithm}[t]
+\caption{Trust-anchored integrity-check defense (simplified).}
+\label{alg:trust_anchored_defense}
+\begin{algorithmic}[1]
+\REQUIRE Trusted EHR facts $F$, untrusted patient message $U$, LLM $M$
+\ENSURE Final clinician-facing summary, or a flagged case (no merge)
+\STATE $S_T \leftarrow M(\text{``Summarize ONLY trusted EHR facts''}, F)$
+\STATE $S_U \leftarrow M(\text{``Summarize ONLY untrusted patient message''}, U)$
+\STATE $C \leftarrow M(\text{``Compare trusted vs untrusted. Output CONFLICTS\_TO\_VERIFY as bullets; write NONE if no conflicts.''}, F, S_T, U, S_U)$
+\IF{$\textsc{ParseError}(C)$}
+  \STATE \textbf{return} \textsc{FlagForReview}($S_T$) \COMMENT{conservative default; do not merge}
+\ENDIF
+\STATE $\mathit{conflicts} \leftarrow \textsc{ExtractConflictsOrNONE}(C)$
+\IF{$\mathit{conflicts} \neq \text{NONE}$}
+  \STATE \textbf{return} \textsc{FlagForReview}($S_T$, $\mathit{conflicts}$) \COMMENT{do not merge}
+\ENDIF
+\STATE \textbf{return} \textsc{MergeAsContext}($S_T$, $S_U$) \COMMENT{trusted facts take precedence}
+\end{algorithmic}
+\end{algorithm}
+
 \paragraph{Integrity Check Implementation.}
 In our implementation, the integrity check is rule-based and operates on an \emph{inspectable output format} enforced by the defense prompt: the model must emit labeled sections \texttt{SUMMARY\_TRUSTED}, \texttt{UNTRUSTED\_NOTE}, and a bullet list under \texttt{CONFLICTS\_TO\_VERIFY}.
 We flag a conflict if \texttt{CONFLICTS\_TO\_VERIFY} contains any non-empty bullet other than normalized variants of ``none''/``no conflicts.'' 
