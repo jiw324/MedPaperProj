@@ -78,7 +78,8 @@ Modern EHR systems store heterogeneous clinical information, including both stru
 \begin{figure}[t]
   \centering
   \vspace{1.5\baselineskip}
-  \includegraphics[width=\columnwidth,keepaspectratio]{img/EHR_System.png}
+  % AI-SUGGESTION: Use a JPG (RGB; no alpha) to avoid some PDF renderers showing a tinted/pink background with RGBA PNGs.
+  \includegraphics[width=\columnwidth,keepaspectratio]{img/EHR_System.jpg}
   \caption{High-level schematic of an EHR-integrated LLM workflow, where clinician-verified EHR data and live user interactions can jointly influence LLM outputs used for downstream clinical, educational, and research tasks \citep{rgLLMEHRFig3_378394229}.}
   \label{fig:ehr_system}
   \vspace{-1.5\baselineskip}
@@ -139,7 +140,7 @@ All experiments reuse these frozen subsets across models and conditions.
 \begin{figure*}[!t]
   \centering
   \vspace{0.2\baselineskip}
-  \includegraphics[width=\textwidth,height=0.82\textheight,keepaspectratio]{img/Attack_Model.png}
+  \includegraphics[width=\textwidth,height=0.82\textheight,keepaspectratio]{img/Attack_Model.jpg}
   \caption{Mixed-trust attack model in an EHR-integrated LLM workflow. Clinician-verified EHR facts (trusted) and patient-portal messages (untrusted) are combined via an EHR interface (e.g., FHIR) into the model context; untrusted claims can induce omission in the provider-facing summary. We evaluate outputs via fact retention rate (FRR; i.e., recall of trusted facts), conflict rate, and attack success rate (ASR).}
   \label{fig:attack_model}
   \vspace{-1\baselineskip}
@@ -209,7 +210,8 @@ For both allergy and medication tasks, we report:
 
 \begin{figure*}[t]
   \centering
-  \includegraphics[width=\textwidth,height=0.55\textheight,keepaspectratio]{img/Defense_Model.png}
+  % AI-SUGGESTION: Use a JPG (RGB; no alpha) to avoid tinted/pink backgrounds in some PDF renderers with RGBA PNGs.
+  \includegraphics[width=\textwidth,height=0.55\textheight,keepaspectratio]{img/Defense_Model.jpg}
   \caption{Trust-anchored defense with explicit trust separation and an integrity check. The system takes clinician-verified EHR facts as \emph{trusted} input and patient-portal messages as \emph{untrusted} input, generates two summaries separately (trusted-only and untrusted-only), and then performs a semantic integrity check by comparing the two summaries. If a conflict is detected, the case is flagged for clinician review and untrusted content is not merged. If no conflict is detected, the untrusted content is marked as \emph{consistent with the checked chart facts} and is eligible to be merged as non-contradictory patient-reported context for the clinician-facing summary (this is not a global elevation of trust).}
   \label{fig:defense_model}
 \end{figure*}
@@ -235,10 +237,8 @@ Concretely, the defense runs the model in two constrained modes:
 
 An \textbf{integrity check} then compares the trusted and untrusted summaries to detect semantic conflicts.
 If a conflict is detected, the system flags the case for clinician review and \emph{does not} merge untrusted content into the trusted summary.
-% AI-SUGGESTION: Avoid implying "no conflict" => globally trusted; it's only "consistent w.r.t. checked facts."
 If no conflict is detected, the system marks the untrusted content as consistent with the checked chart facts and eligible to merge as non-contradictory patient-reported context, producing a final clinician-facing summary for downstream use.
 
-% AI-SUGGESTION: Specify the integrity check implementation to remove "black box" ambiguity.
 \paragraph{Integrity Check Implementation.}
 In our implementation, the integrity check is rule-based and operates on an \emph{inspectable output format} enforced by the defense prompt: the model must emit labeled sections \texttt{SUMMARY\_TRUSTED}, \texttt{UNTRUSTED\_NOTE}, and a bullet list under \texttt{CONFLICTS\_TO\_VERIFY}.
 We flag a conflict if \texttt{CONFLICTS\_TO\_VERIFY} contains any non-empty bullet other than normalized variants of ``none''/``no conflicts.'' 
@@ -248,7 +248,7 @@ This checker does not run separate entailment or LLM-as-judge inference; instead
 We evaluate this defense under clean and attack conditions, measuring (a) whether trusted EHR facts are preserved (fact retention / recall) and (b) whether conflicts are explicitly detected and surfaced.
 This defense is intended to reduce \emph{silent} integrity failures in EHR-integrated LLM systems by making trust boundaries and disagreement explicit at generation time, rather than assuming a single mixed-trust context can be safely summarized.
 
-\section{Results} % AI-SUGGESTION: Promoted to a top-level section per paper structure preference.
+\section{Results}
 \label{sec:results}
 
 We summarize baseline vulnerability and defended residual failure rates in \Cref{tab:asr} over $N=1000$ cases per task and model.
