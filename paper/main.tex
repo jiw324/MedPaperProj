@@ -25,7 +25,6 @@
 \newtheorem{assumption}[theorem]{Assumption}
 \theoremstyle{remark}
 \newtheorem{remark}[theorem]{Remark}
-% AI-SUGGESTION: Keep running header consistent with the main title to avoid "stitched draft" appearance.
 \icmltitlerunning{Generation-Time Semantic Integrity in EHR-Integrated LLMs}
 
 \begin{document}
@@ -57,7 +56,7 @@ This integration gives rise to a subtle but safety-critical failure mode that is
 
 Prior benchmarks for clinical LLMs have primarily emphasized task performance, such as question answering accuracy, summarization quality, or clinical reasoning, typically using EHR-derived corpora and benchmark datasets \citep{kweon2024ehrnoteqa,aalijamia2025bhc}. These evaluations generally assume a uniform trust level across model inputs and do not explicitly assess whether verified clinical facts are preserved in the presence of untrusted instructions. Consequently, they offer limited insight into model behavior under realistic EHR integration settings, where trust boundaries exist implicitly rather than being formally enforced.
 
-In this work, we introduce a benchmark for evaluating semantic integrity in EHR-integrated LLMs under mixed-trust inputs. The benchmark formalizes a simple but realistic workflow: (1) the model is provided with structured ground-truth patient data representing clinician-verified EHR facts; (2) an untrusted instruction is introduced; (3) the model is tasked with generating a clinical summary; and (4) the output is compared against the ground truth to identify integrity violations. We consider both clean and adversarial conditions to isolate the effect of untrusted instruction dominance, closely related to prompt-injection--style vulnerabilities described in prior LLM security guidance \citep{owasp_prompt_injection}. % AI-SUGGESTION: Unlike classic prompt injection that targets privileged model instructions, our setting is driven by the EHR integration layer mixing untrusted portal text with trusted facts, leading to silent omission/negation of verified items without modifying system prompts or using tools.
+In this work, we introduce a benchmark for evaluating semantic integrity in EHR-integrated LLMs under mixed-trust inputs. The benchmark formalizes a simple but realistic workflow: (1) the model is provided with structured ground-truth patient data representing clinician-verified EHR facts; (2) an untrusted instruction is introduced; (3) the model is tasked with generating a clinical summary; and (4) the output is compared against the ground truth to identify integrity violations. We consider both clean and adversarial conditions to isolate the effect of untrusted instruction dominance, closely related to prompt-injection--style vulnerabilities described in prior LLM security guidance \citep{owasp_prompt_injection}.
 
 Using this framework, we evaluate multiple frontier and open-weight LLMs on chart summarization tasks involving allergies and medications. We quantify integrity failures using automatic metrics that capture both fact omission and explicit contradiction, and analyze how these behaviors vary across models. We further evaluate a trust-anchored integrity-check defense that enforces explicit separation between trusted EHR facts and untrusted patient-reported information---not as a complete mitigation, but as a diagnostic mechanism for surfacing otherwise silent errors.
 
@@ -78,7 +77,6 @@ Modern EHR systems store heterogeneous clinical information, including both stru
 \begin{figure}[t]
   \centering
   \vspace{1.5\baselineskip}
-  % AI-SUGGESTION: Use a JPG (RGB; no alpha) to avoid some PDF renderers showing a tinted/pink background with RGBA PNGs.
   \includegraphics[width=\columnwidth,keepaspectratio]{img/EHR_System}
   \caption{High-level schematic of an EHR-integrated LLM workflow, where clinician-verified EHR data and live user interactions can jointly influence LLM outputs used for downstream clinical, educational, and research tasks \citep{rgLLMEHRFig3_378394229}.}
   \label{fig:ehr_system}
@@ -157,7 +155,6 @@ The task is to generate a concise provider-facing chart summary in response to a
 \emph{``Write a concise chart summary for a new provider.''}
 All outputs are constrained to a single sentence to increase pressure for factual omission and prioritization.
 
-% AI-SUGGESTION: Briefly justify the "realistic workflow" claim given deliberate experimental constraints.
 \paragraph{Why This Captures Realistic Risk.}
 Many deployed EHR copilots and documentation assistants generate brief, handoff-style summary snippets under time and space constraints; our single-sentence setting intentionally amplifies the same prioritization pressure that makes omissions likely in practice \citep{woo2025scoping,bednarczyk2025summarization,perez2022summarization,starmer2014ipass}.
 We focus on allergies and active medications because they are ubiquitous across encounters and safety-critical for clinical decision-making, making integrity failures immediately consequential \citep{jointcommission_medrec,nice_drug_allergy}.
@@ -210,7 +207,6 @@ For both allergy and medication tasks, we report:
 
 \begin{figure*}[t]
   \centering
-  % AI-SUGGESTION: Use a JPG (RGB; no alpha) to avoid tinted/pink backgrounds in some PDF renderers with RGBA PNGs.
   \includegraphics[width=\textwidth,height=0.55\textheight,keepaspectratio]{img/Defense_Model}
   \caption{Trust-anchored defense with explicit trust separation and an integrity check. The system takes clinician-verified EHR facts as \emph{trusted} input and patient-portal messages as \emph{untrusted} input, generates two summaries separately (trusted-only and untrusted-only), and then performs a semantic integrity check by comparing the two summaries. If a conflict is detected, the case is flagged for clinician review and untrusted content is not merged. If no conflict is detected, the untrusted content is marked as \emph{consistent with the checked chart facts} and is eligible to be merged as non-contradictory patient-reported context for the clinician-facing summary (this is not a global elevation of trust).}
   \label{fig:defense_model}
@@ -270,7 +266,6 @@ We flag a conflict if \texttt{CONFLICTS\_TO\_VERIFY} contains any non-empty bull
 If the expected headers or bullets are missing (formatting mismatch / parse error), we conservatively treat the case as a failure of the defense pipeline in our evaluation (and count it as an attack success under attack).
 This checker does not run separate entailment or LLM-as-judge inference; instead, it measures whether the model explicitly surfaced a conflict in the designated section (including hedged/uncertain phrasing, if present).
 
-% AI-SUGGESTION: Blind review: exact prompt/check formats are moved to appendix placeholders.
 See Appendix~\ref{app:prompts} for placeholder descriptions of the prompt templates and checker I/O format.
 
 We evaluate this defense under clean and attack conditions, measuring (a) whether trusted EHR facts are preserved (fact retention / recall) and (b) whether conflicts are explicitly detected and surfaced.
@@ -326,6 +321,9 @@ The trust-anchored defense evaluated in this work operates over textual summarie
 \paragraph{Human-in-the-Loop and Deployment Considerations.}
 Finally, while our defense surfaces conflicts for clinician review, future work should explore how multimodal conflicts are best presented to clinicians in practice. Understanding cognitive load, alert fatigue, and interpretability of multimodal integrity violations will be essential for safe deployment.
 
+\section{Impact Statement}
+This work studies generation-time semantic integrity failures in EHR-integrated LLM summarization under mixed-trust inputs. \textbf{Potential positive impacts} include improving patient safety by identifying conditions under which safety-critical facts (e.g., allergies and active medications) may be silently omitted, and motivating practical integrity-checking interfaces that surface conflicts for clinician review. \textbf{Potential negative impacts and dual-use risks} include enabling more effective adversarial strategies against clinical summarization systems if deployed without safeguards. To mitigate this, we focus on high-level mechanisms and quantitative evaluation (using synthetic data) and emphasize defenses that reduce silent failures by making disagreements explicit rather than increasing automation. Overall, we believe the primary societal benefit is to support safer clinical deployment by encouraging trust-boundary-aware system design, conservative failure handling, and human oversight in high-stakes settings.
+
 \bibliographystyle{icml2026}
 \bibliography{main}
 
@@ -334,27 +332,22 @@ Finally, while our defense surfaces conflicts for clinician review, future work 
 
 \subsection{Artifact Placeholder: patient identifier list}
 \label{app:file-patient-ids}
-% AI-SUGGESTION: Placeholder only for blind review. Replace with the concrete filename + schema in camera-ready.
 \textit{Omitted for blind review. In the camera-ready version, this appendix item will specify the patient identifier list artifact (e.g., a text file with one patient identifier per line) and its fields/format.}
 
 \subsection{Artifact Placeholder: patient demographics table}
 \label{app:file-patients-subset}
-% AI-SUGGESTION: Placeholder only for blind review. Replace with the concrete filename + schema in camera-ready.
 \textit{Omitted for blind review. In the camera-ready version, this appendix item will specify the patient demographics table artifact (e.g., a tabular export) and its columns.}
 
 \subsection{Artifact Placeholder: allergy fact table}
 \label{app:file-allergies-subset}
-% AI-SUGGESTION: Placeholder only for blind review. Replace with the concrete filename + schema in camera-ready.
 \textit{Omitted for blind review. In the camera-ready version, this appendix item will specify the allergy fact table artifact and its columns.}
 
 \subsection{Artifact Placeholder: medication fact table}
 \label{app:file-medications-subset}
-% AI-SUGGESTION: Placeholder only for blind review. Replace with the concrete filename + schema in camera-ready.
 \textit{Omitted for blind review. In the camera-ready version, this appendix item will specify the medication fact table artifact and its columns.}
 
 \subsection{Prompt Templates and Checker Format Placeholder}
 \label{app:prompts}
-% AI-SUGGESTION: Placeholder only for blind review. Replace with actual templates/checker spec in camera-ready.
 \textit{Exact prompt templates (including model-specific wrappers) and the integrity-check I/O format are omitted for blind review. In the camera-ready version, this appendix will include the baseline and defended prompt templates, the required output headers/fields for the integrity check, and the rule-based parsing criteria used to flag conflicts and parse errors.}
 
 \end{document}
