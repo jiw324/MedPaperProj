@@ -226,6 +226,7 @@ For attack conditions, we additionally report an \textbf{attack success rate}, d
 We set the recall threshold to $\tau = 0.5$ for both allergy and medication tasks.
 Recall is computed via deterministic normalized string matching: we lowercase and strip punctuation from both the one-sentence output and each chart item, and count an item as mentioned if its normalized description (or a normalized extracted allergen/medication term) appears as a substring of the normalized output; false-none is triggered only when a ``no allergies/medications'' pattern is present and zero chart items match.
 This metric captures both partial and complete suppression of verified chart facts.
+Because this evaluator is surface-form based, it can underestimate recall under paraphrases, synonyms, or spelling/formatting variation (especially for medication names). As a sanity check, we validated that the matcher achieves $100\%$ recall on constructed ``oracle'' summaries that literally contain all ground-truth item descriptions (tested on a random sample of patients from each cohort), confirming correct behavior under exact-string inclusion.
 
 \subsection{Defense Model: Trust-Anchored Summarization}
 
@@ -277,7 +278,7 @@ This defense is intended to reduce \emph{silent} integrity failures in EHR-integ
 \section{Results}
 \label{sec:results}
 
-We summarize baseline vulnerability and defended residual failure rates in \Cref{tab:asr} over $N=1000$ cases per task and model.
+We summarize baseline vulnerability and defended residual failure rates in \Cref{tab:asr} over $N=1000$ cases per task and model. For these binomial rates, the worst-case (at $p=0.5$) normal-approximation $95\%$ confidence interval half-width is $\le 1.96\sqrt{0.25/1000}\approx 0.031$, so the point estimates are statistically tight at the few-percentage-point level.
 \textbf{Attack effectiveness (bad).} The omission attack is
 
 \begin{table*}[t]
@@ -308,6 +309,9 @@ In this batch, \textit{(i)} \texttt{llama31} exhibits extremely high conflict-fl
 \section{Future Work}
 
 This work focuses on generation-time semantic integrity failures arising from mixed-trust \emph{textual} inputs in EHR-integrated LLM systems. While this setting captures a common deployment scenario today, several important directions remain open.
+
+\paragraph{Concrete Evaluation Extensions.}
+First, we will incorporate targeted human validation (e.g., clinician chart review) on a stratified subset of outputs to better characterize clinical significance and evaluator failure modes. Second, we will evaluate domain-adapted or clinically fine-tuned LLMs to test whether EHR-specific pretraining/adaptation changes mixed-trust integrity behavior. Third, we will extend the benchmark beyond allergies and medications to additional safety-critical EHR entities (e.g., diagnoses, laboratory values, and longitudinal notes). Finally, we will study more robust conflict detection beyond rule-based parsing, including entailment- or learned-checker approaches that are less sensitive to formatting.
 
 \paragraph{Multimodal Attack Surfaces in Clinical Workflows.}
 EHR-adjacent patient communication channels increasingly support richer media (e.g., photos and videos) alongside secure messages, which can later be ingested by downstream clinical workflows and AI systems \citep{onc_secure_messaging}. As LLM-based systems evolve toward multimodal models that jointly process text, images, and video, these modalities introduce new mixed-trust attack surfaces. Extending semantic-integrity benchmarks to multimodal EHR inputs—where trusted structured data must remain authoritative despite conflicting visual evidence—represents a critical next step.
@@ -351,6 +355,6 @@ This work studies generation-time semantic integrity failures in EHR-integrated 
 
 \subsection{Prompt Templates and Checker Format Placeholder}
 \label{app:prompts}
-\textit{Exact prompt templates (including model-specific wrappers) and the integrity-check I/O format are omitted for blind review. In the camera-ready version, this appendix will include the baseline and defended prompt templates, the required output headers/fields for the integrity check, and the rule-based parsing criteria used to flag conflicts and parse errors.}
+\textit{Exact prompt templates (including model-specific wrappers) and the integrity-check I/O format are omitted for blind review. In the camera-ready version, this appendix will include the baseline and defended prompt templates, the required output headers/fields for the integrity check, and the rule-based parsing criteria used to flag conflicts and parse errors. We will also provide a public release package containing the benchmark specification (artifact schemas and frozen cohort definition), evaluation scripts, and reproduction instructions (without requiring access to private infrastructure).}
 
 \end{document}
