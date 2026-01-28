@@ -103,6 +103,8 @@ Large language models have been increasingly explored for clinical documentation
 \subsection{Clinical Benchmarks for EHR-Centered Language Tasks}
 
 A substantial body of prior work has developed benchmarks for clinical natural language processing and EHR-centered language understanding, including question answering over clinical notes and structured records \citep{pampari2018emrqa}. More recent benchmarks extend these efforts to multi-document and EHR-derived tasks, such as question answering over discharge summaries and longitudinal records \citep{kweon2024ehrnoteqa}. While these benchmarks capture important aspects of clinical reasoning and information retrieval, they typically evaluate task performance under a single trust assumption and do not explicitly test whether verified clinical facts are preserved when models are exposed to adversarial or untrusted inputs.
+% AI-SUGGESTION: Add context on EHR-integrated evaluation work to strengthen coverage without over-expanding scope.
+Complementary evaluations study how general-purpose LLMs behave on EHR-derived tasks and workflows more broadly \citep{wu2024ehr,liu2024medhelm}, but do not isolate mixed-trust integrity failures caused by untrusted patient-authored inputs interacting with trusted chart facts during summarization.
 
 \subsection{Factuality and Reliability of Clinical LLM Outputs}
 
@@ -111,10 +113,14 @@ Concerns about factual correctness and reliability of LLM-generated clinical tex
 \subsection{Prompt Injection and Mixed-Trust Inputs}
 
 Prompt injection has been widely recognized as a fundamental vulnerability in LLM-based systems, stemming from the lack of robust separation between instructions and untrusted data \citep{owasp_prompt_injection}. Although most prior work studies prompt injection in general-purpose or agentic settings, the underlying mechanism is directly relevant to EHR-integrated workflows, where patient-reported text, system instructions, and structured clinical facts are often combined within a single context. Our work adapts this security perspective to clinical documentation by explicitly evaluating whether untrusted inputs can override verified EHR facts during generation.
+% AI-SUGGESTION: Cite representative prompt-injection and "LLM-integrated application" attack literature to strengthen positioning.
+Recent work demonstrates both direct prompt-injection attacks on LLMs and indirect instruction injection through integrated applications and retrieved content \citep{pei2023prompt,greshake2023not,bagdasaryan2023multimodal}.
 
 \subsection{Positioning of This Work}
 
 In contrast to prior clinical LLM benchmarks and evaluations, our work explicitly models mixed-trust EHR workflows and evaluates semantic integrity under clean, adversarial, and defended conditions. Rather than measuring task accuracy alone, we quantify whether LLM-generated clinical summaries preserve clinician-verified ground-truth facts when exposed to untrusted instructions. This benchmark complements existing clinical summarization and question-answering benchmarks by isolating an integration-driven failure mode rooted in instruction-following behavior, enabling controlled comparisons across models and interface-level defenses.
+% AI-SUGGESTION: Make the distinction explicit (mechanism vs outcome vs trust boundary) to reduce reviewer ambiguity.
+Concretely, the mechanism we study is \emph{mixed-trust context injection} through the EHR integration layer (untrusted portal text co-located with trusted facts), the outcome is \emph{semantic integrity violations} (silent omission/negation of verified allergies/medications), and the trust boundary is between clinician-verified chart data and patient-authored content.
 
 \section{Experiments}
 
