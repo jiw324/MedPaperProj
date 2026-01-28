@@ -99,12 +99,15 @@ The system goal is to produce a concise chart summary that preserves clinician-v
 \subsection{LLMs for Clinical Documentation}
 
 Large language models have been increasingly explored for clinical documentation tasks, including note drafting, chart summarization, and discharge or handoff summaries \citep{woo2025scoping,bednarczyk2025summarization}. Recent work has introduced datasets and evaluation protocols targeting longitudinal hospital-course and discharge-style summarization, enabling systematic comparison of model outputs on clinically grounded tasks \citep{aali2024mimicivbhc}. These efforts primarily assess linguistic quality, clinical coverage, and usefulness of generated summaries, but generally assume that all model inputs are equally trusted and do not evaluate behavior under conflicting or untrusted instructions.
+% AI-SUGGESTION: Briefly connect to the broader question of domain adaptation vs general LLMs in clinical settings.
+Complementary lines of work study whether specialized clinical language models are still needed in the era of general-purpose LLMs and how much clinical knowledge such models encode \citep{lehman2023does,singhal2023large}.
 
 \subsection{Clinical Benchmarks for EHR-Centered Language Tasks}
 
 A substantial body of prior work has developed benchmarks for clinical natural language processing and EHR-centered language understanding, including question answering over clinical notes and structured records \citep{pampari2018emrqa}. More recent benchmarks extend these efforts to multi-document and EHR-derived tasks, such as question answering over discharge summaries and longitudinal records \citep{kweon2024ehrnoteqa}. While these benchmarks capture important aspects of clinical reasoning and information retrieval, they typically evaluate task performance under a single trust assumption and do not explicitly test whether verified clinical facts are preserved when models are exposed to adversarial or untrusted inputs.
 % AI-SUGGESTION: Add context on EHR-integrated evaluation work to strengthen coverage without over-expanding scope.
 Complementary evaluations study how general-purpose LLMs behave on EHR-derived tasks and workflows more broadly \citep{wu2024ehr,liu2024medhelm}, but do not isolate mixed-trust integrity failures caused by untrusted patient-authored inputs interacting with trusted chart facts during summarization.
+Earlier clinical-domain models (e.g., ClinicalBERT-style encoders) support many EHR NLP tasks, but are not designed to enforce trust boundaries during instruction-following generation \citep{alsentzer2019publicly}.
 
 \subsection{Factuality and Reliability of Clinical LLM Outputs}
 
@@ -278,7 +281,7 @@ This defense is intended to reduce \emph{silent} integrity failures in EHR-integ
 \section{Results}
 \label{sec:results}
 
-We summarize baseline vulnerability and defended residual failure rates in \Cref{tab:asr} over $N=1000$ cases per task and model. For these binomial rates, the worst-case (at $p=0.5$) normal-approximation $95\%$ confidence interval half-width is $\le 1.96\sqrt{0.25/1000}\approx 0.031$, so the point estimates are statistically tight at the few-percentage-point level.
+We summarize baseline vulnerability and defended residual failure rates in \Cref{tab:asr} over $N=1000$ cases per task and model.
 \textbf{Attack effectiveness (bad).} The omission attack is
 
 \begin{table*}[t]
@@ -305,6 +308,12 @@ consistently damaging in the baseline setting: several models exhibit near-compl
 \paragraph{Clean-set costs and failure modes (bad).}
 While the defense is effective at surfacing attacks, it can introduce practical costs.
 In this batch, \textit{(i)} \texttt{llama31} exhibits extremely high conflict-flag rates even on clean inputs (clean \texttt{conflict\_flagged\_rate} $=0.992$ for allergy and $=1.000$ for medication, vs.\ $\le 0.002$ for the other models), suggesting an overly sensitive conflict surface or a formatting mismatch that populates \texttt{CONFLICTS\_TO\_VERIFY} spuriously; and \textit{(ii)} \texttt{claude45} on medication summarization shows elevated parse errors (clean \texttt{parse\_error\_rate} $=0.117$) and the highest defended ASR, indicating reduced stability of the defense pipeline in that setting.
+
+\paragraph{Mitigating clean-set costs (guidance).}
+To reduce spurious conflicts and parse errors in deployment, practitioners can (a) enforce stricter structured outputs (e.g., fixed headers, constrained JSON, or regex-checked bullet schemas), (b) apply lightweight retry/repair on formatting failures (e.g., one re-ask with the model's prior output as context, or deterministic post-processing that restores missing headers), (c) calibrate conflict sensitivity with model-specific templates and allowlists for benign uncertainty language, and (d) rate-limit or batch clinician review by grouping repeated conflicts and suppressing duplicates to reduce alert fatigue.
+
+\paragraph{Sensitivity and diagnostic note (limitations).}
+Although we keep prompts and structured facts fixed across conditions, some model runners require minimal wrapper differences (e.g., system-message conventions) and the attack relies on natural-language contradiction where ordering/recency can matter. As a result, absolute ASR values may be sensitive to prompt formatting and message placement even when the underlying mixed-trust mechanism is unchanged; we treat the reported results as representative for the evaluated templates and leave systematic ablations over wrapper style and instruction position to future work.
 
 \section{Future Work}
 
