@@ -79,6 +79,239 @@ CLAUDE45_MODEL ?= claude-sonnet-4-5
 .PHONY: defense_medication defense_medication_test
 .PHONY: defense_medication_qwen
 
+# -----------------------------
+# Standard prompt-injection defenses (baseline tasks)
+# 1) Instruction–data separation (IDS prompt structuring)
+# 2) Output validation / verifier gate (post-scoring)
+# 3) Least privilege / sandboxing (exclude untrusted text from context)
+# -----------------------------
+
+IDS_ALLERGY_OUT_ROOT := output/defense_ids_allergy_omission
+IDS_MED_OUT_ROOT := output/defense_ids_medication_omission
+SANDBOX_ALLERGY_OUT_ROOT := output/defense_sandbox_allergy_omission
+SANDBOX_MED_OUT_ROOT := output/defense_sandbox_medication_omission
+GATE_OUT_ROOT := output/defense_output_validation_gate
+
+.PHONY: ids_allergy_prompts_all ids_allergy_models_all ids_allergy_score_all ids_allergy_all
+.PHONY: sandbox_allergy_prompts_all sandbox_allergy_models_all sandbox_allergy_score_all sandbox_allergy_all
+.PHONY: ids_medication_prompts_all ids_medication_models_all ids_medication_score_all ids_medication_all
+.PHONY: sandbox_medication_prompts_all sandbox_medication_models_all sandbox_medication_score_all sandbox_medication_all
+.PHONY: gate_allergy_all gate_medication_all
+
+# -----------------------------
+# IDS (instruction–data separation) — prompts
+# -----------------------------
+ids_allergy_prompts_llama31: allergy_subdataset
+	@$(PY) main/src/prompt_injection_defense_prompts.py --task allergy --defense ids --model_key llama31_groq --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --items_csv "$(SUBSET_DIR)/allergies_subset.csv" --max_patients $(MAX_PATIENTS) --out_jsonl "$(IDS_ALLERGY_OUT_ROOT)/llama31_groq/prompts.jsonl"
+ids_allergy_prompts_llama33: allergy_subdataset
+	@$(PY) main/src/prompt_injection_defense_prompts.py --task allergy --defense ids --model_key llama33_groq --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --items_csv "$(SUBSET_DIR)/allergies_subset.csv" --max_patients $(MAX_PATIENTS) --out_jsonl "$(IDS_ALLERGY_OUT_ROOT)/llama33_groq/prompts.jsonl"
+ids_allergy_prompts_qwen3: allergy_subdataset
+	@$(PY) main/src/prompt_injection_defense_prompts.py --task allergy --defense ids --model_key qwen3_groq --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --items_csv "$(SUBSET_DIR)/allergies_subset.csv" --max_patients $(MAX_PATIENTS) --out_jsonl "$(IDS_ALLERGY_OUT_ROOT)/qwen3_groq/prompts.jsonl"
+ids_allergy_prompts_gpt41: allergy_subdataset
+	@$(PY) main/src/prompt_injection_defense_prompts.py --task allergy --defense ids --model_key gpt41 --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --items_csv "$(SUBSET_DIR)/allergies_subset.csv" --max_patients $(MAX_PATIENTS) --out_jsonl "$(IDS_ALLERGY_OUT_ROOT)/gpt41/prompts.jsonl"
+ids_allergy_prompts_gpt51: allergy_subdataset
+	@$(PY) main/src/prompt_injection_defense_prompts.py --task allergy --defense ids --model_key gpt51 --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --items_csv "$(SUBSET_DIR)/allergies_subset.csv" --max_patients $(MAX_PATIENTS) --out_jsonl "$(IDS_ALLERGY_OUT_ROOT)/gpt51/prompts.jsonl"
+ids_allergy_prompts_claude45: allergy_subdataset
+	@$(PY) main/src/prompt_injection_defense_prompts.py --task allergy --defense ids --model_key claude45 --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --items_csv "$(SUBSET_DIR)/allergies_subset.csv" --max_patients $(MAX_PATIENTS) --out_jsonl "$(IDS_ALLERGY_OUT_ROOT)/claude45/prompts.jsonl"
+ids_allergy_prompts_all: ids_allergy_prompts_llama31 ids_allergy_prompts_llama33 ids_allergy_prompts_qwen3 ids_allergy_prompts_gpt41 ids_allergy_prompts_gpt51 ids_allergy_prompts_claude45
+
+# IDS — model runs
+ids_allergy_llama31: ids_allergy_prompts_llama31
+	@$(PY) "LLM Model/Llama 3.1/llama31_groq_runner.py" --model "$(LLAMA31_MODEL)" --prompts_jsonl "$(IDS_ALLERGY_OUT_ROOT)/llama31_groq/prompts.jsonl" --out_jsonl "$(IDS_ALLERGY_OUT_ROOT)/llama31_groq/generations.jsonl" --max_tokens 0 --limit $(RUN_LIMIT)
+ids_allergy_llama33: ids_allergy_prompts_llama33
+	@$(PY) "LLM Model/Llama 3.3/llama33_groq_runner.py" --model "$(LLAMA33_MODEL)" --prompts_jsonl "$(IDS_ALLERGY_OUT_ROOT)/llama33_groq/prompts.jsonl" --out_jsonl "$(IDS_ALLERGY_OUT_ROOT)/llama33_groq/generations.jsonl" --max_tokens 0 --limit $(RUN_LIMIT)
+ids_allergy_qwen3: ids_allergy_prompts_qwen3
+	@$(PY) "LLM Model/Qwen 3/qwen3_bedrock_runner.py" --model "$(QWEN3_MODEL)" --prompts_jsonl "$(IDS_ALLERGY_OUT_ROOT)/qwen3_groq/prompts.jsonl" --out_jsonl "$(IDS_ALLERGY_OUT_ROOT)/qwen3_groq/generations.jsonl" --max_tokens 0 --limit $(RUN_LIMIT)
+ids_allergy_gpt41: ids_allergy_prompts_gpt41
+	@$(PY) "LLM Model/GPT-4.1/gpt41_api.py" --model "$(GPT41_MODEL)" --prompts_jsonl "$(IDS_ALLERGY_OUT_ROOT)/gpt41/prompts.jsonl" --out_jsonl "$(IDS_ALLERGY_OUT_ROOT)/gpt41/generations.jsonl" --limit $(RUN_LIMIT)
+ids_allergy_gpt51: ids_allergy_prompts_gpt51
+	@$(PY) "LLM Model/GPT-5.1/gpt51_api.py" --model "$(GPT51_MODEL)" --prompts_jsonl "$(IDS_ALLERGY_OUT_ROOT)/gpt51/prompts.jsonl" --out_jsonl "$(IDS_ALLERGY_OUT_ROOT)/gpt51/generations.jsonl" --limit $(RUN_LIMIT)
+ids_allergy_claude45: ids_allergy_prompts_claude45
+	@$(PY) "LLM Model/Claude 4.5/claude45_api.py" --model "$(CLAUDE45_MODEL)" --prompts_jsonl "$(IDS_ALLERGY_OUT_ROOT)/claude45/prompts.jsonl" --out_jsonl "$(IDS_ALLERGY_OUT_ROOT)/claude45/generations.jsonl" --limit $(RUN_LIMIT)
+ids_allergy_models_all: ids_allergy_llama31 ids_allergy_llama33 ids_allergy_qwen3 ids_allergy_gpt41 ids_allergy_gpt51 ids_allergy_claude45
+
+# IDS — scoring
+ids_allergy_score_llama31:
+	@$(PY) main/src/allergy_omission_experiment.py --allergies_csv "$(SUBSET_DIR)/allergies_subset.csv" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --max_patients $(MAX_PATIENTS) --seed $(SEED) --model_key llama31_groq --out_dir "$(IDS_ALLERGY_OUT_ROOT)/llama31_groq/scored" --generations_jsonl "$(IDS_ALLERGY_OUT_ROOT)/llama31_groq/generations.jsonl" --attack_success_recall_threshold $(ATTACK_RECALL_THRESH) --success_conditions "$(SUCCESS_CONDITIONS)" --clean_success_recall_threshold $(CLEAN_SUCCESS_RECALL_THRESH)
+ids_allergy_score_llama33:
+	@$(PY) main/src/allergy_omission_experiment.py --allergies_csv "$(SUBSET_DIR)/allergies_subset.csv" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --max_patients $(MAX_PATIENTS) --seed $(SEED) --model_key llama33_groq --out_dir "$(IDS_ALLERGY_OUT_ROOT)/llama33_groq/scored" --generations_jsonl "$(IDS_ALLERGY_OUT_ROOT)/llama33_groq/generations.jsonl" --attack_success_recall_threshold $(ATTACK_RECALL_THRESH) --success_conditions "$(SUCCESS_CONDITIONS)" --clean_success_recall_threshold $(CLEAN_SUCCESS_RECALL_THRESH)
+ids_allergy_score_qwen3:
+	@$(PY) main/src/allergy_omission_experiment.py --allergies_csv "$(SUBSET_DIR)/allergies_subset.csv" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --max_patients $(MAX_PATIENTS) --seed $(SEED) --model_key qwen3_groq --out_dir "$(IDS_ALLERGY_OUT_ROOT)/qwen3_groq/scored" --generations_jsonl "$(IDS_ALLERGY_OUT_ROOT)/qwen3_groq/generations.jsonl" --attack_success_recall_threshold $(ATTACK_RECALL_THRESH) --success_conditions "$(SUCCESS_CONDITIONS)" --clean_success_recall_threshold $(CLEAN_SUCCESS_RECALL_THRESH)
+ids_allergy_score_gpt41:
+	@$(PY) main/src/allergy_omission_experiment.py --allergies_csv "$(SUBSET_DIR)/allergies_subset.csv" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --max_patients $(MAX_PATIENTS) --seed $(SEED) --model_key gpt41 --out_dir "$(IDS_ALLERGY_OUT_ROOT)/gpt41/scored" --generations_jsonl "$(IDS_ALLERGY_OUT_ROOT)/gpt41/generations.jsonl" --attack_success_recall_threshold $(ATTACK_RECALL_THRESH) --success_conditions "$(SUCCESS_CONDITIONS)" --clean_success_recall_threshold $(CLEAN_SUCCESS_RECALL_THRESH)
+ids_allergy_score_gpt51:
+	@$(PY) main/src/allergy_omission_experiment.py --allergies_csv "$(SUBSET_DIR)/allergies_subset.csv" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --max_patients $(MAX_PATIENTS) --seed $(SEED) --model_key gpt51 --out_dir "$(IDS_ALLERGY_OUT_ROOT)/gpt51/scored" --generations_jsonl "$(IDS_ALLERGY_OUT_ROOT)/gpt51/generations.jsonl" --attack_success_recall_threshold $(ATTACK_RECALL_THRESH) --success_conditions "$(SUCCESS_CONDITIONS)" --clean_success_recall_threshold $(CLEAN_SUCCESS_RECALL_THRESH)
+ids_allergy_score_claude45:
+	@$(PY) main/src/allergy_omission_experiment.py --allergies_csv "$(SUBSET_DIR)/allergies_subset.csv" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --max_patients $(MAX_PATIENTS) --seed $(SEED) --model_key claude45 --out_dir "$(IDS_ALLERGY_OUT_ROOT)/claude45/scored" --generations_jsonl "$(IDS_ALLERGY_OUT_ROOT)/claude45/generations.jsonl" --attack_success_recall_threshold $(ATTACK_RECALL_THRESH) --success_conditions "$(SUCCESS_CONDITIONS)" --clean_success_recall_threshold $(CLEAN_SUCCESS_RECALL_THRESH)
+ids_allergy_score_all: ids_allergy_score_llama31 ids_allergy_score_llama33 ids_allergy_score_qwen3 ids_allergy_score_gpt41 ids_allergy_score_gpt51 ids_allergy_score_claude45
+ids_allergy_all: ids_allergy_prompts_all ids_allergy_models_all ids_allergy_score_all
+
+# -----------------------------
+# Sandbox (least privilege) — allergy
+# -----------------------------
+sandbox_allergy_prompts_llama31: allergy_subdataset
+	@$(PY) main/src/prompt_injection_defense_prompts.py --task allergy --defense sandbox --model_key llama31_groq --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --items_csv "$(SUBSET_DIR)/allergies_subset.csv" --max_patients $(MAX_PATIENTS) --out_jsonl "$(SANDBOX_ALLERGY_OUT_ROOT)/llama31_groq/prompts.jsonl"
+sandbox_allergy_prompts_llama33: allergy_subdataset
+	@$(PY) main/src/prompt_injection_defense_prompts.py --task allergy --defense sandbox --model_key llama33_groq --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --items_csv "$(SUBSET_DIR)/allergies_subset.csv" --max_patients $(MAX_PATIENTS) --out_jsonl "$(SANDBOX_ALLERGY_OUT_ROOT)/llama33_groq/prompts.jsonl"
+sandbox_allergy_prompts_qwen3: allergy_subdataset
+	@$(PY) main/src/prompt_injection_defense_prompts.py --task allergy --defense sandbox --model_key qwen3_groq --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --items_csv "$(SUBSET_DIR)/allergies_subset.csv" --max_patients $(MAX_PATIENTS) --out_jsonl "$(SANDBOX_ALLERGY_OUT_ROOT)/qwen3_groq/prompts.jsonl"
+sandbox_allergy_prompts_gpt41: allergy_subdataset
+	@$(PY) main/src/prompt_injection_defense_prompts.py --task allergy --defense sandbox --model_key gpt41 --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --items_csv "$(SUBSET_DIR)/allergies_subset.csv" --max_patients $(MAX_PATIENTS) --out_jsonl "$(SANDBOX_ALLERGY_OUT_ROOT)/gpt41/prompts.jsonl"
+sandbox_allergy_prompts_gpt51: allergy_subdataset
+	@$(PY) main/src/prompt_injection_defense_prompts.py --task allergy --defense sandbox --model_key gpt51 --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --items_csv "$(SUBSET_DIR)/allergies_subset.csv" --max_patients $(MAX_PATIENTS) --out_jsonl "$(SANDBOX_ALLERGY_OUT_ROOT)/gpt51/prompts.jsonl"
+sandbox_allergy_prompts_claude45: allergy_subdataset
+	@$(PY) main/src/prompt_injection_defense_prompts.py --task allergy --defense sandbox --model_key claude45 --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --items_csv "$(SUBSET_DIR)/allergies_subset.csv" --max_patients $(MAX_PATIENTS) --out_jsonl "$(SANDBOX_ALLERGY_OUT_ROOT)/claude45/prompts.jsonl"
+sandbox_allergy_prompts_all: sandbox_allergy_prompts_llama31 sandbox_allergy_prompts_llama33 sandbox_allergy_prompts_qwen3 sandbox_allergy_prompts_gpt41 sandbox_allergy_prompts_gpt51 sandbox_allergy_prompts_claude45
+
+sandbox_allergy_llama31: sandbox_allergy_prompts_llama31
+	@$(PY) "LLM Model/Llama 3.1/llama31_groq_runner.py" --model "$(LLAMA31_MODEL)" --prompts_jsonl "$(SANDBOX_ALLERGY_OUT_ROOT)/llama31_groq/prompts.jsonl" --out_jsonl "$(SANDBOX_ALLERGY_OUT_ROOT)/llama31_groq/generations.jsonl" --max_tokens 0 --limit $(RUN_LIMIT)
+sandbox_allergy_llama33: sandbox_allergy_prompts_llama33
+	@$(PY) "LLM Model/Llama 3.3/llama33_groq_runner.py" --model "$(LLAMA33_MODEL)" --prompts_jsonl "$(SANDBOX_ALLERGY_OUT_ROOT)/llama33_groq/prompts.jsonl" --out_jsonl "$(SANDBOX_ALLERGY_OUT_ROOT)/llama33_groq/generations.jsonl" --max_tokens 0 --limit $(RUN_LIMIT)
+sandbox_allergy_qwen3: sandbox_allergy_prompts_qwen3
+	@$(PY) "LLM Model/Qwen 3/qwen3_bedrock_runner.py" --model "$(QWEN3_MODEL)" --prompts_jsonl "$(SANDBOX_ALLERGY_OUT_ROOT)/qwen3_groq/prompts.jsonl" --out_jsonl "$(SANDBOX_ALLERGY_OUT_ROOT)/qwen3_groq/generations.jsonl" --max_tokens 0 --limit $(RUN_LIMIT)
+sandbox_allergy_gpt41: sandbox_allergy_prompts_gpt41
+	@$(PY) "LLM Model/GPT-4.1/gpt41_api.py" --model "$(GPT41_MODEL)" --prompts_jsonl "$(SANDBOX_ALLERGY_OUT_ROOT)/gpt41/prompts.jsonl" --out_jsonl "$(SANDBOX_ALLERGY_OUT_ROOT)/gpt41/generations.jsonl" --limit $(RUN_LIMIT)
+sandbox_allergy_gpt51: sandbox_allergy_prompts_gpt51
+	@$(PY) "LLM Model/GPT-5.1/gpt51_api.py" --model "$(GPT51_MODEL)" --prompts_jsonl "$(SANDBOX_ALLERGY_OUT_ROOT)/gpt51/prompts.jsonl" --out_jsonl "$(SANDBOX_ALLERGY_OUT_ROOT)/gpt51/generations.jsonl" --limit $(RUN_LIMIT)
+sandbox_allergy_claude45: sandbox_allergy_prompts_claude45
+	@$(PY) "LLM Model/Claude 4.5/claude45_api.py" --model "$(CLAUDE45_MODEL)" --prompts_jsonl "$(SANDBOX_ALLERGY_OUT_ROOT)/claude45/prompts.jsonl" --out_jsonl "$(SANDBOX_ALLERGY_OUT_ROOT)/claude45/generations.jsonl" --limit $(RUN_LIMIT)
+sandbox_allergy_models_all: sandbox_allergy_llama31 sandbox_allergy_llama33 sandbox_allergy_qwen3 sandbox_allergy_gpt41 sandbox_allergy_gpt51 sandbox_allergy_claude45
+
+sandbox_allergy_score_llama31:
+	@$(PY) main/src/allergy_omission_experiment.py --allergies_csv "$(SUBSET_DIR)/allergies_subset.csv" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --max_patients $(MAX_PATIENTS) --seed $(SEED) --model_key llama31_groq --out_dir "$(SANDBOX_ALLERGY_OUT_ROOT)/llama31_groq/scored" --generations_jsonl "$(SANDBOX_ALLERGY_OUT_ROOT)/llama31_groq/generations.jsonl" --attack_success_recall_threshold $(ATTACK_RECALL_THRESH) --success_conditions "$(SUCCESS_CONDITIONS)" --clean_success_recall_threshold $(CLEAN_SUCCESS_RECALL_THRESH)
+sandbox_allergy_score_llama33:
+	@$(PY) main/src/allergy_omission_experiment.py --allergies_csv "$(SUBSET_DIR)/allergies_subset.csv" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --max_patients $(MAX_PATIENTS) --seed $(SEED) --model_key llama33_groq --out_dir "$(SANDBOX_ALLERGY_OUT_ROOT)/llama33_groq/scored" --generations_jsonl "$(SANDBOX_ALLERGY_OUT_ROOT)/llama33_groq/generations.jsonl" --attack_success_recall_threshold $(ATTACK_RECALL_THRESH) --success_conditions "$(SUCCESS_CONDITIONS)" --clean_success_recall_threshold $(CLEAN_SUCCESS_RECALL_THRESH)
+sandbox_allergy_score_qwen3:
+	@$(PY) main/src/allergy_omission_experiment.py --allergies_csv "$(SUBSET_DIR)/allergies_subset.csv" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --max_patients $(MAX_PATIENTS) --seed $(SEED) --model_key qwen3_groq --out_dir "$(SANDBOX_ALLERGY_OUT_ROOT)/qwen3_groq/scored" --generations_jsonl "$(SANDBOX_ALLERGY_OUT_ROOT)/qwen3_groq/generations.jsonl" --attack_success_recall_threshold $(ATTACK_RECALL_THRESH) --success_conditions "$(SUCCESS_CONDITIONS)" --clean_success_recall_threshold $(CLEAN_SUCCESS_RECALL_THRESH)
+sandbox_allergy_score_gpt41:
+	@$(PY) main/src/allergy_omission_experiment.py --allergies_csv "$(SUBSET_DIR)/allergies_subset.csv" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --max_patients $(MAX_PATIENTS) --seed $(SEED) --model_key gpt41 --out_dir "$(SANDBOX_ALLERGY_OUT_ROOT)/gpt41/scored" --generations_jsonl "$(SANDBOX_ALLERGY_OUT_ROOT)/gpt41/generations.jsonl" --attack_success_recall_threshold $(ATTACK_RECALL_THRESH) --success_conditions "$(SUCCESS_CONDITIONS)" --clean_success_recall_threshold $(CLEAN_SUCCESS_RECALL_THRESH)
+sandbox_allergy_score_gpt51:
+	@$(PY) main/src/allergy_omission_experiment.py --allergies_csv "$(SUBSET_DIR)/allergies_subset.csv" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --max_patients $(MAX_PATIENTS) --seed $(SEED) --model_key gpt51 --out_dir "$(SANDBOX_ALLERGY_OUT_ROOT)/gpt51/scored" --generations_jsonl "$(SANDBOX_ALLERGY_OUT_ROOT)/gpt51/generations.jsonl" --attack_success_recall_threshold $(ATTACK_RECALL_THRESH) --success_conditions "$(SUCCESS_CONDITIONS)" --clean_success_recall_threshold $(CLEAN_SUCCESS_RECALL_THRESH)
+sandbox_allergy_score_claude45:
+	@$(PY) main/src/allergy_omission_experiment.py --allergies_csv "$(SUBSET_DIR)/allergies_subset.csv" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --max_patients $(MAX_PATIENTS) --seed $(SEED) --model_key claude45 --out_dir "$(SANDBOX_ALLERGY_OUT_ROOT)/claude45/scored" --generations_jsonl "$(SANDBOX_ALLERGY_OUT_ROOT)/claude45/generations.jsonl" --attack_success_recall_threshold $(ATTACK_RECALL_THRESH) --success_conditions "$(SUCCESS_CONDITIONS)" --clean_success_recall_threshold $(CLEAN_SUCCESS_RECALL_THRESH)
+sandbox_allergy_score_all: sandbox_allergy_score_llama31 sandbox_allergy_score_llama33 sandbox_allergy_score_qwen3 sandbox_allergy_score_gpt41 sandbox_allergy_score_gpt51 sandbox_allergy_score_claude45
+sandbox_allergy_all: sandbox_allergy_prompts_all sandbox_allergy_models_all sandbox_allergy_score_all
+
+# -----------------------------
+# IDS / Sandbox — medication
+# -----------------------------
+ids_medication_prompts_llama31: medication_subdataset
+	@$(PY) main/src/prompt_injection_defense_prompts.py --task medication --defense ids --model_key llama31_groq --patient_ids_txt "$(MED_SUBSET_DIR)/patient_ids.txt" --patients_csv "$(MED_SUBSET_DIR)/patients_subset.csv" --items_csv "$(MED_SUBSET_DIR)/medications_subset.csv" --max_patients $(MED_MAX_PATIENTS) --out_jsonl "$(IDS_MED_OUT_ROOT)/llama31_groq/prompts.jsonl"
+ids_medication_prompts_llama33: medication_subdataset
+	@$(PY) main/src/prompt_injection_defense_prompts.py --task medication --defense ids --model_key llama33_groq --patient_ids_txt "$(MED_SUBSET_DIR)/patient_ids.txt" --patients_csv "$(MED_SUBSET_DIR)/patients_subset.csv" --items_csv "$(MED_SUBSET_DIR)/medications_subset.csv" --max_patients $(MED_MAX_PATIENTS) --out_jsonl "$(IDS_MED_OUT_ROOT)/llama33_groq/prompts.jsonl"
+ids_medication_prompts_qwen3: medication_subdataset
+	@$(PY) main/src/prompt_injection_defense_prompts.py --task medication --defense ids --model_key qwen3_groq --patient_ids_txt "$(MED_SUBSET_DIR)/patient_ids.txt" --patients_csv "$(MED_SUBSET_DIR)/patients_subset.csv" --items_csv "$(MED_SUBSET_DIR)/medications_subset.csv" --max_patients $(MED_MAX_PATIENTS) --out_jsonl "$(IDS_MED_OUT_ROOT)/qwen3_groq/prompts.jsonl"
+ids_medication_prompts_gpt41: medication_subdataset
+	@$(PY) main/src/prompt_injection_defense_prompts.py --task medication --defense ids --model_key gpt41 --patient_ids_txt "$(MED_SUBSET_DIR)/patient_ids.txt" --patients_csv "$(MED_SUBSET_DIR)/patients_subset.csv" --items_csv "$(MED_SUBSET_DIR)/medications_subset.csv" --max_patients $(MED_MAX_PATIENTS) --out_jsonl "$(IDS_MED_OUT_ROOT)/gpt41/prompts.jsonl"
+ids_medication_prompts_gpt51: medication_subdataset
+	@$(PY) main/src/prompt_injection_defense_prompts.py --task medication --defense ids --model_key gpt51 --patient_ids_txt "$(MED_SUBSET_DIR)/patient_ids.txt" --patients_csv "$(MED_SUBSET_DIR)/patients_subset.csv" --items_csv "$(MED_SUBSET_DIR)/medications_subset.csv" --max_patients $(MED_MAX_PATIENTS) --out_jsonl "$(IDS_MED_OUT_ROOT)/gpt51/prompts.jsonl"
+ids_medication_prompts_claude45: medication_subdataset
+	@$(PY) main/src/prompt_injection_defense_prompts.py --task medication --defense ids --model_key claude45 --patient_ids_txt "$(MED_SUBSET_DIR)/patient_ids.txt" --patients_csv "$(MED_SUBSET_DIR)/patients_subset.csv" --items_csv "$(MED_SUBSET_DIR)/medications_subset.csv" --max_patients $(MED_MAX_PATIENTS) --out_jsonl "$(IDS_MED_OUT_ROOT)/claude45/prompts.jsonl"
+ids_medication_prompts_all: ids_medication_prompts_llama31 ids_medication_prompts_llama33 ids_medication_prompts_qwen3 ids_medication_prompts_gpt41 ids_medication_prompts_gpt51 ids_medication_prompts_claude45
+
+ids_medication_llama31: ids_medication_prompts_llama31
+	@$(PY) "LLM Model/Llama 3.1/llama31_groq_runner.py" --model "$(LLAMA31_MODEL)" --prompts_jsonl "$(IDS_MED_OUT_ROOT)/llama31_groq/prompts.jsonl" --out_jsonl "$(IDS_MED_OUT_ROOT)/llama31_groq/generations.jsonl" --max_tokens 0 --limit $(RUN_LIMIT)
+ids_medication_llama33: ids_medication_prompts_llama33
+	@$(PY) "LLM Model/Llama 3.3/llama33_groq_runner.py" --model "$(LLAMA33_MODEL)" --prompts_jsonl "$(IDS_MED_OUT_ROOT)/llama33_groq/prompts.jsonl" --out_jsonl "$(IDS_MED_OUT_ROOT)/llama33_groq/generations.jsonl" --max_tokens 0 --limit $(RUN_LIMIT)
+ids_medication_qwen3: ids_medication_prompts_qwen3
+	@$(PY) "LLM Model/Qwen 3/qwen3_bedrock_runner.py" --model "$(QWEN3_MODEL)" --prompts_jsonl "$(IDS_MED_OUT_ROOT)/qwen3_groq/prompts.jsonl" --out_jsonl "$(IDS_MED_OUT_ROOT)/qwen3_groq/generations.jsonl" --max_tokens 0 --limit $(RUN_LIMIT)
+ids_medication_gpt41: ids_medication_prompts_gpt41
+	@$(PY) "LLM Model/GPT-4.1/gpt41_api.py" --model "$(GPT41_MODEL)" --prompts_jsonl "$(IDS_MED_OUT_ROOT)/gpt41/prompts.jsonl" --out_jsonl "$(IDS_MED_OUT_ROOT)/gpt41/generations.jsonl" --limit $(RUN_LIMIT)
+ids_medication_gpt51: ids_medication_prompts_gpt51
+	@$(PY) "LLM Model/GPT-5.1/gpt51_api.py" --model "$(GPT51_MODEL)" --prompts_jsonl "$(IDS_MED_OUT_ROOT)/gpt51/prompts.jsonl" --out_jsonl "$(IDS_MED_OUT_ROOT)/gpt51/generations.jsonl" --limit $(RUN_LIMIT)
+ids_medication_claude45: ids_medication_prompts_claude45
+	@$(PY) "LLM Model/Claude 4.5/claude45_api.py" --model "$(CLAUDE45_MODEL)" --prompts_jsonl "$(IDS_MED_OUT_ROOT)/claude45/prompts.jsonl" --out_jsonl "$(IDS_MED_OUT_ROOT)/claude45/generations.jsonl" --limit $(RUN_LIMIT)
+ids_medication_models_all: ids_medication_llama31 ids_medication_llama33 ids_medication_qwen3 ids_medication_gpt41 ids_medication_gpt51 ids_medication_claude45
+
+ids_medication_score_llama31:
+	@$(PY) main/src/medication_omission_experiment.py --medications_csv "$(MED_SUBSET_DIR)/medications_subset.csv" --patients_csv "$(MED_SUBSET_DIR)/patients_subset.csv" --patient_ids_txt "$(MED_SUBSET_DIR)/patient_ids.txt" --cases_jsonl "$(IDS_MED_OUT_ROOT)/llama31_groq/prompts.jsonl" --max_patients $(MED_MAX_PATIENTS) --seed $(SEED) --model_key llama31_groq --out_dir "$(IDS_MED_OUT_ROOT)/llama31_groq/scored" --generations_jsonl "$(IDS_MED_OUT_ROOT)/llama31_groq/generations.jsonl" --attack_success_recall_threshold $(MED_ATTACK_RECALL_THRESH) --success_conditions "$(MED_SUCCESS_CONDITIONS)" --clean_success_recall_threshold $(MED_CLEAN_SUCCESS_RECALL_THRESH)
+ids_medication_score_llama33:
+	@$(PY) main/src/medication_omission_experiment.py --medications_csv "$(MED_SUBSET_DIR)/medications_subset.csv" --patients_csv "$(MED_SUBSET_DIR)/patients_subset.csv" --patient_ids_txt "$(MED_SUBSET_DIR)/patient_ids.txt" --cases_jsonl "$(IDS_MED_OUT_ROOT)/llama33_groq/prompts.jsonl" --max_patients $(MED_MAX_PATIENTS) --seed $(SEED) --model_key llama33_groq --out_dir "$(IDS_MED_OUT_ROOT)/llama33_groq/scored" --generations_jsonl "$(IDS_MED_OUT_ROOT)/llama33_groq/generations.jsonl" --attack_success_recall_threshold $(MED_ATTACK_RECALL_THRESH) --success_conditions "$(MED_SUCCESS_CONDITIONS)" --clean_success_recall_threshold $(MED_CLEAN_SUCCESS_RECALL_THRESH)
+ids_medication_score_qwen3:
+	@$(PY) main/src/medication_omission_experiment.py --medications_csv "$(MED_SUBSET_DIR)/medications_subset.csv" --patients_csv "$(MED_SUBSET_DIR)/patients_subset.csv" --patient_ids_txt "$(MED_SUBSET_DIR)/patient_ids.txt" --cases_jsonl "$(IDS_MED_OUT_ROOT)/qwen3_groq/prompts.jsonl" --max_patients $(MED_MAX_PATIENTS) --seed $(SEED) --model_key qwen3_groq --out_dir "$(IDS_MED_OUT_ROOT)/qwen3_groq/scored" --generations_jsonl "$(IDS_MED_OUT_ROOT)/qwen3_groq/generations.jsonl" --attack_success_recall_threshold $(MED_ATTACK_RECALL_THRESH) --success_conditions "$(MED_SUCCESS_CONDITIONS)" --clean_success_recall_threshold $(MED_CLEAN_SUCCESS_RECALL_THRESH)
+ids_medication_score_gpt41:
+	@$(PY) main/src/medication_omission_experiment.py --medications_csv "$(MED_SUBSET_DIR)/medications_subset.csv" --patients_csv "$(MED_SUBSET_DIR)/patients_subset.csv" --patient_ids_txt "$(MED_SUBSET_DIR)/patient_ids.txt" --cases_jsonl "$(IDS_MED_OUT_ROOT)/gpt41/prompts.jsonl" --max_patients $(MED_MAX_PATIENTS) --seed $(SEED) --model_key gpt41 --out_dir "$(IDS_MED_OUT_ROOT)/gpt41/scored" --generations_jsonl "$(IDS_MED_OUT_ROOT)/gpt41/generations.jsonl" --attack_success_recall_threshold $(MED_ATTACK_RECALL_THRESH) --success_conditions "$(MED_SUCCESS_CONDITIONS)" --clean_success_recall_threshold $(MED_CLEAN_SUCCESS_RECALL_THRESH)
+ids_medication_score_gpt51:
+	@$(PY) main/src/medication_omission_experiment.py --medications_csv "$(MED_SUBSET_DIR)/medications_subset.csv" --patients_csv "$(MED_SUBSET_DIR)/patients_subset.csv" --patient_ids_txt "$(MED_SUBSET_DIR)/patient_ids.txt" --cases_jsonl "$(IDS_MED_OUT_ROOT)/gpt51/prompts.jsonl" --max_patients $(MED_MAX_PATIENTS) --seed $(SEED) --model_key gpt51 --out_dir "$(IDS_MED_OUT_ROOT)/gpt51/scored" --generations_jsonl "$(IDS_MED_OUT_ROOT)/gpt51/generations.jsonl" --attack_success_recall_threshold $(MED_ATTACK_RECALL_THRESH) --success_conditions "$(MED_SUCCESS_CONDITIONS)" --clean_success_recall_threshold $(MED_CLEAN_SUCCESS_RECALL_THRESH)
+ids_medication_score_claude45:
+	@$(PY) main/src/medication_omission_experiment.py --medications_csv "$(MED_SUBSET_DIR)/medications_subset.csv" --patients_csv "$(MED_SUBSET_DIR)/patients_subset.csv" --patient_ids_txt "$(MED_SUBSET_DIR)/patient_ids.txt" --cases_jsonl "$(IDS_MED_OUT_ROOT)/claude45/prompts.jsonl" --max_patients $(MED_MAX_PATIENTS) --seed $(SEED) --model_key claude45 --out_dir "$(IDS_MED_OUT_ROOT)/claude45/scored" --generations_jsonl "$(IDS_MED_OUT_ROOT)/claude45/generations.jsonl" --attack_success_recall_threshold $(MED_ATTACK_RECALL_THRESH) --success_conditions "$(MED_SUCCESS_CONDITIONS)" --clean_success_recall_threshold $(MED_CLEAN_SUCCESS_RECALL_THRESH)
+ids_medication_score_all: ids_medication_score_llama31 ids_medication_score_llama33 ids_medication_score_qwen3 ids_medication_score_gpt41 ids_medication_score_gpt51 ids_medication_score_claude45
+ids_medication_all: ids_medication_prompts_all ids_medication_models_all ids_medication_score_all
+
+sandbox_medication_prompts_llama31: medication_subdataset
+	@$(PY) main/src/prompt_injection_defense_prompts.py --task medication --defense sandbox --model_key llama31_groq --patient_ids_txt "$(MED_SUBSET_DIR)/patient_ids.txt" --patients_csv "$(MED_SUBSET_DIR)/patients_subset.csv" --items_csv "$(MED_SUBSET_DIR)/medications_subset.csv" --max_patients $(MED_MAX_PATIENTS) --out_jsonl "$(SANDBOX_MED_OUT_ROOT)/llama31_groq/prompts.jsonl"
+sandbox_medication_prompts_llama33: medication_subdataset
+	@$(PY) main/src/prompt_injection_defense_prompts.py --task medication --defense sandbox --model_key llama33_groq --patient_ids_txt "$(MED_SUBSET_DIR)/patient_ids.txt" --patients_csv "$(MED_SUBSET_DIR)/patients_subset.csv" --items_csv "$(MED_SUBSET_DIR)/medications_subset.csv" --max_patients $(MED_MAX_PATIENTS) --out_jsonl "$(SANDBOX_MED_OUT_ROOT)/llama33_groq/prompts.jsonl"
+sandbox_medication_prompts_qwen3: medication_subdataset
+	@$(PY) main/src/prompt_injection_defense_prompts.py --task medication --defense sandbox --model_key qwen3_groq --patient_ids_txt "$(MED_SUBSET_DIR)/patient_ids.txt" --patients_csv "$(MED_SUBSET_DIR)/patients_subset.csv" --items_csv "$(MED_SUBSET_DIR)/medications_subset.csv" --max_patients $(MED_MAX_PATIENTS) --out_jsonl "$(SANDBOX_MED_OUT_ROOT)/qwen3_groq/prompts.jsonl"
+sandbox_medication_prompts_gpt41: medication_subdataset
+	@$(PY) main/src/prompt_injection_defense_prompts.py --task medication --defense sandbox --model_key gpt41 --patient_ids_txt "$(MED_SUBSET_DIR)/patient_ids.txt" --patients_csv "$(MED_SUBSET_DIR)/patients_subset.csv" --items_csv "$(MED_SUBSET_DIR)/medications_subset.csv" --max_patients $(MED_MAX_PATIENTS) --out_jsonl "$(SANDBOX_MED_OUT_ROOT)/gpt41/prompts.jsonl"
+sandbox_medication_prompts_gpt51: medication_subdataset
+	@$(PY) main/src/prompt_injection_defense_prompts.py --task medication --defense sandbox --model_key gpt51 --patient_ids_txt "$(MED_SUBSET_DIR)/patient_ids.txt" --patients_csv "$(MED_SUBSET_DIR)/patients_subset.csv" --items_csv "$(MED_SUBSET_DIR)/medications_subset.csv" --max_patients $(MED_MAX_PATIENTS) --out_jsonl "$(SANDBOX_MED_OUT_ROOT)/gpt51/prompts.jsonl"
+sandbox_medication_prompts_claude45: medication_subdataset
+	@$(PY) main/src/prompt_injection_defense_prompts.py --task medication --defense sandbox --model_key claude45 --patient_ids_txt "$(MED_SUBSET_DIR)/patient_ids.txt" --patients_csv "$(MED_SUBSET_DIR)/patients_subset.csv" --items_csv "$(MED_SUBSET_DIR)/medications_subset.csv" --max_patients $(MED_MAX_PATIENTS) --out_jsonl "$(SANDBOX_MED_OUT_ROOT)/claude45/prompts.jsonl"
+sandbox_medication_prompts_all: sandbox_medication_prompts_llama31 sandbox_medication_prompts_llama33 sandbox_medication_prompts_qwen3 sandbox_medication_prompts_gpt41 sandbox_medication_prompts_gpt51 sandbox_medication_prompts_claude45
+
+sandbox_medication_llama31: sandbox_medication_prompts_llama31
+	@$(PY) "LLM Model/Llama 3.1/llama31_groq_runner.py" --model "$(LLAMA31_MODEL)" --prompts_jsonl "$(SANDBOX_MED_OUT_ROOT)/llama31_groq/prompts.jsonl" --out_jsonl "$(SANDBOX_MED_OUT_ROOT)/llama31_groq/generations.jsonl" --max_tokens 0 --limit $(RUN_LIMIT)
+sandbox_medication_llama33: sandbox_medication_prompts_llama33
+	@$(PY) "LLM Model/Llama 3.3/llama33_groq_runner.py" --model "$(LLAMA33_MODEL)" --prompts_jsonl "$(SANDBOX_MED_OUT_ROOT)/llama33_groq/prompts.jsonl" --out_jsonl "$(SANDBOX_MED_OUT_ROOT)/llama33_groq/generations.jsonl" --max_tokens 0 --limit $(RUN_LIMIT)
+sandbox_medication_qwen3: sandbox_medication_prompts_qwen3
+	@$(PY) "LLM Model/Qwen 3/qwen3_bedrock_runner.py" --model "$(QWEN3_MODEL)" --prompts_jsonl "$(SANDBOX_MED_OUT_ROOT)/qwen3_groq/prompts.jsonl" --out_jsonl "$(SANDBOX_MED_OUT_ROOT)/qwen3_groq/generations.jsonl" --max_tokens 0 --limit $(RUN_LIMIT)
+sandbox_medication_gpt41: sandbox_medication_prompts_gpt41
+	@$(PY) "LLM Model/GPT-4.1/gpt41_api.py" --model "$(GPT41_MODEL)" --prompts_jsonl "$(SANDBOX_MED_OUT_ROOT)/gpt41/prompts.jsonl" --out_jsonl "$(SANDBOX_MED_OUT_ROOT)/gpt41/generations.jsonl" --limit $(RUN_LIMIT)
+sandbox_medication_gpt51: sandbox_medication_prompts_gpt51
+	@$(PY) "LLM Model/GPT-5.1/gpt51_api.py" --model "$(GPT51_MODEL)" --prompts_jsonl "$(SANDBOX_MED_OUT_ROOT)/gpt51/prompts.jsonl" --out_jsonl "$(SANDBOX_MED_OUT_ROOT)/gpt51/generations.jsonl" --limit $(RUN_LIMIT)
+sandbox_medication_claude45: sandbox_medication_prompts_claude45
+	@$(PY) "LLM Model/Claude 4.5/claude45_api.py" --model "$(CLAUDE45_MODEL)" --prompts_jsonl "$(SANDBOX_MED_OUT_ROOT)/claude45/prompts.jsonl" --out_jsonl "$(SANDBOX_MED_OUT_ROOT)/claude45/generations.jsonl" --limit $(RUN_LIMIT)
+sandbox_medication_models_all: sandbox_medication_llama31 sandbox_medication_llama33 sandbox_medication_qwen3 sandbox_medication_gpt41 sandbox_medication_gpt51 sandbox_medication_claude45
+
+sandbox_medication_score_llama31:
+	@$(PY) main/src/medication_omission_experiment.py --medications_csv "$(MED_SUBSET_DIR)/medications_subset.csv" --patients_csv "$(MED_SUBSET_DIR)/patients_subset.csv" --patient_ids_txt "$(MED_SUBSET_DIR)/patient_ids.txt" --cases_jsonl "$(SANDBOX_MED_OUT_ROOT)/llama31_groq/prompts.jsonl" --max_patients $(MED_MAX_PATIENTS) --seed $(SEED) --model_key llama31_groq --out_dir "$(SANDBOX_MED_OUT_ROOT)/llama31_groq/scored" --generations_jsonl "$(SANDBOX_MED_OUT_ROOT)/llama31_groq/generations.jsonl" --attack_success_recall_threshold $(MED_ATTACK_RECALL_THRESH) --success_conditions "$(MED_SUCCESS_CONDITIONS)" --clean_success_recall_threshold $(MED_CLEAN_SUCCESS_RECALL_THRESH)
+sandbox_medication_score_llama33:
+	@$(PY) main/src/medication_omission_experiment.py --medications_csv "$(MED_SUBSET_DIR)/medications_subset.csv" --patients_csv "$(MED_SUBSET_DIR)/patients_subset.csv" --patient_ids_txt "$(MED_SUBSET_DIR)/patient_ids.txt" --cases_jsonl "$(SANDBOX_MED_OUT_ROOT)/llama33_groq/prompts.jsonl" --max_patients $(MED_MAX_PATIENTS) --seed $(SEED) --model_key llama33_groq --out_dir "$(SANDBOX_MED_OUT_ROOT)/llama33_groq/scored" --generations_jsonl "$(SANDBOX_MED_OUT_ROOT)/llama33_groq/generations.jsonl" --attack_success_recall_threshold $(MED_ATTACK_RECALL_THRESH) --success_conditions "$(MED_SUCCESS_CONDITIONS)" --clean_success_recall_threshold $(MED_CLEAN_SUCCESS_RECALL_THRESH)
+sandbox_medication_score_qwen3:
+	@$(PY) main/src/medication_omission_experiment.py --medications_csv "$(MED_SUBSET_DIR)/medications_subset.csv" --patients_csv "$(MED_SUBSET_DIR)/patients_subset.csv" --patient_ids_txt "$(MED_SUBSET_DIR)/patient_ids.txt" --cases_jsonl "$(SANDBOX_MED_OUT_ROOT)/qwen3_groq/prompts.jsonl" --max_patients $(MED_MAX_PATIENTS) --seed $(SEED) --model_key qwen3_groq --out_dir "$(SANDBOX_MED_OUT_ROOT)/qwen3_groq/scored" --generations_jsonl "$(SANDBOX_MED_OUT_ROOT)/qwen3_groq/generations.jsonl" --attack_success_recall_threshold $(MED_ATTACK_RECALL_THRESH) --success_conditions "$(MED_SUCCESS_CONDITIONS)" --clean_success_recall_threshold $(MED_CLEAN_SUCCESS_RECALL_THRESH)
+sandbox_medication_score_gpt41:
+	@$(PY) main/src/medication_omission_experiment.py --medications_csv "$(MED_SUBSET_DIR)/medications_subset.csv" --patients_csv "$(MED_SUBSET_DIR)/patients_subset.csv" --patient_ids_txt "$(MED_SUBSET_DIR)/patient_ids.txt" --cases_jsonl "$(SANDBOX_MED_OUT_ROOT)/gpt41/prompts.jsonl" --max_patients $(MED_MAX_PATIENTS) --seed $(SEED) --model_key gpt41 --out_dir "$(SANDBOX_MED_OUT_ROOT)/gpt41/scored" --generations_jsonl "$(SANDBOX_MED_OUT_ROOT)/gpt41/generations.jsonl" --attack_success_recall_threshold $(MED_ATTACK_RECALL_THRESH) --success_conditions "$(MED_SUCCESS_CONDITIONS)" --clean_success_recall_threshold $(MED_CLEAN_SUCCESS_RECALL_THRESH)
+sandbox_medication_score_gpt51:
+	@$(PY) main/src/medication_omission_experiment.py --medications_csv "$(MED_SUBSET_DIR)/medications_subset.csv" --patients_csv "$(MED_SUBSET_DIR)/patients_subset.csv" --patient_ids_txt "$(MED_SUBSET_DIR)/patient_ids.txt" --cases_jsonl "$(SANDBOX_MED_OUT_ROOT)/gpt51/prompts.jsonl" --max_patients $(MED_MAX_PATIENTS) --seed $(SEED) --model_key gpt51 --out_dir "$(SANDBOX_MED_OUT_ROOT)/gpt51/scored" --generations_jsonl "$(SANDBOX_MED_OUT_ROOT)/gpt51/generations.jsonl" --attack_success_recall_threshold $(MED_ATTACK_RECALL_THRESH) --success_conditions "$(MED_SUCCESS_CONDITIONS)" --clean_success_recall_threshold $(MED_CLEAN_SUCCESS_RECALL_THRESH)
+sandbox_medication_score_claude45:
+	@$(PY) main/src/medication_omission_experiment.py --medications_csv "$(MED_SUBSET_DIR)/medications_subset.csv" --patients_csv "$(MED_SUBSET_DIR)/patients_subset.csv" --patient_ids_txt "$(MED_SUBSET_DIR)/patient_ids.txt" --cases_jsonl "$(SANDBOX_MED_OUT_ROOT)/claude45/prompts.jsonl" --max_patients $(MED_MAX_PATIENTS) --seed $(SEED) --model_key claude45 --out_dir "$(SANDBOX_MED_OUT_ROOT)/claude45/scored" --generations_jsonl "$(SANDBOX_MED_OUT_ROOT)/claude45/generations.jsonl" --attack_success_recall_threshold $(MED_ATTACK_RECALL_THRESH) --success_conditions "$(MED_SUCCESS_CONDITIONS)" --clean_success_recall_threshold $(MED_CLEAN_SUCCESS_RECALL_THRESH)
+sandbox_medication_score_all: sandbox_medication_score_llama31 sandbox_medication_score_llama33 sandbox_medication_score_qwen3 sandbox_medication_score_gpt41 sandbox_medication_score_gpt51 sandbox_medication_score_claude45
+sandbox_medication_all: sandbox_medication_prompts_all sandbox_medication_models_all sandbox_medication_score_all
+
+# -----------------------------
+# Output validation / verifier gate (post-scoring) — all 6 models
+# -----------------------------
+gate_allergy_llama31: allergy_score_llama31
+	@$(PY) main/src/output_validation_gate.py --task allergy --results_csv "$(SCORED_ROOT)/llama31_groq/results.csv" --attack_gate_recall_threshold 1.0 --clean_gate_recall_threshold $(CLEAN_SUCCESS_RECALL_THRESH) --out_json "$(GATE_OUT_ROOT)/allergy/llama31_groq_gate_summary.json"
+gate_allergy_llama33: allergy_score_llama33
+	@$(PY) main/src/output_validation_gate.py --task allergy --results_csv "$(SCORED_ROOT)/llama33_groq/results.csv" --attack_gate_recall_threshold 1.0 --clean_gate_recall_threshold $(CLEAN_SUCCESS_RECALL_THRESH) --out_json "$(GATE_OUT_ROOT)/allergy/llama33_groq_gate_summary.json"
+gate_allergy_qwen3: allergy_score_qwen3
+	@$(PY) main/src/output_validation_gate.py --task allergy --results_csv "$(SCORED_ROOT)/qwen3_groq/results.csv" --attack_gate_recall_threshold 1.0 --clean_gate_recall_threshold $(CLEAN_SUCCESS_RECALL_THRESH) --out_json "$(GATE_OUT_ROOT)/allergy/qwen3_groq_gate_summary.json"
+gate_allergy_gpt41: allergy_score_gpt41
+	@$(PY) main/src/output_validation_gate.py --task allergy --results_csv "$(SCORED_ROOT)/gpt41/results.csv" --attack_gate_recall_threshold 1.0 --clean_gate_recall_threshold $(CLEAN_SUCCESS_RECALL_THRESH) --out_json "$(GATE_OUT_ROOT)/allergy/gpt41_gate_summary.json"
+gate_allergy_gpt51: allergy_score_gpt51
+	@$(PY) main/src/output_validation_gate.py --task allergy --results_csv "$(SCORED_ROOT)/gpt51/results.csv" --attack_gate_recall_threshold 1.0 --clean_gate_recall_threshold $(CLEAN_SUCCESS_RECALL_THRESH) --out_json "$(GATE_OUT_ROOT)/allergy/gpt51_gate_summary.json"
+gate_allergy_claude45: allergy_score_claude45
+	@$(PY) main/src/output_validation_gate.py --task allergy --results_csv "$(SCORED_ROOT)/claude45/results.csv" --attack_gate_recall_threshold 1.0 --clean_gate_recall_threshold $(CLEAN_SUCCESS_RECALL_THRESH) --out_json "$(GATE_OUT_ROOT)/allergy/claude45_gate_summary.json"
+gate_allergy_all: gate_allergy_llama31 gate_allergy_llama33 gate_allergy_qwen3 gate_allergy_gpt41 gate_allergy_gpt51 gate_allergy_claude45
+
+gate_medication_llama31: medication_score_llama31
+	@$(PY) main/src/output_validation_gate.py --task medication --results_csv "$(MED_SCORED_ROOT)/llama31_groq/results.csv" --attack_gate_recall_threshold 1.0 --clean_gate_recall_threshold $(MED_CLEAN_SUCCESS_RECALL_THRESH) --out_json "$(GATE_OUT_ROOT)/medication/llama31_groq_gate_summary.json"
+gate_medication_llama33: medication_score_llama33
+	@$(PY) main/src/output_validation_gate.py --task medication --results_csv "$(MED_SCORED_ROOT)/llama33_groq/results.csv" --attack_gate_recall_threshold 1.0 --clean_gate_recall_threshold $(MED_CLEAN_SUCCESS_RECALL_THRESH) --out_json "$(GATE_OUT_ROOT)/medication/llama33_groq_gate_summary.json"
+gate_medication_qwen3: medication_score_qwen3
+	@$(PY) main/src/output_validation_gate.py --task medication --results_csv "$(MED_SCORED_ROOT)/qwen3_groq/results.csv" --attack_gate_recall_threshold 1.0 --clean_gate_recall_threshold $(MED_CLEAN_SUCCESS_RECALL_THRESH) --out_json "$(GATE_OUT_ROOT)/medication/qwen3_groq_gate_summary.json"
+gate_medication_gpt41: medication_score_gpt41
+	@$(PY) main/src/output_validation_gate.py --task medication --results_csv "$(MED_SCORED_ROOT)/gpt41/results.csv" --attack_gate_recall_threshold 1.0 --clean_gate_recall_threshold $(MED_CLEAN_SUCCESS_RECALL_THRESH) --out_json "$(GATE_OUT_ROOT)/medication/gpt41_gate_summary.json"
+gate_medication_gpt51: medication_score_gpt51
+	@$(PY) main/src/output_validation_gate.py --task medication --results_csv "$(MED_SCORED_ROOT)/gpt51/results.csv" --attack_gate_recall_threshold 1.0 --clean_gate_recall_threshold $(MED_CLEAN_SUCCESS_RECALL_THRESH) --out_json "$(GATE_OUT_ROOT)/medication/gpt51_gate_summary.json"
+gate_medication_claude45: medication_score_claude45
+	@$(PY) main/src/output_validation_gate.py --task medication --results_csv "$(MED_SCORED_ROOT)/claude45/results.csv" --attack_gate_recall_threshold 1.0 --clean_gate_recall_threshold $(MED_CLEAN_SUCCESS_RECALL_THRESH) --out_json "$(GATE_OUT_ROOT)/medication/claude45_gate_summary.json"
+gate_medication_all: gate_medication_llama31 gate_medication_llama33 gate_medication_qwen3 gate_medication_gpt41 gate_medication_gpt51 gate_medication_claude45
+
 prepare_allergy:
 	@$(PY) -c "import os; os.makedirs(r'$(SUBSET_DIR)', exist_ok=True); os.makedirs(r'$(RESULT_DIR)', exist_ok=True)"
 
@@ -133,10 +366,9 @@ allergy_claude45: allergy_prompts_claude45
 
 allergy_models: allergy_llama31 allergy_llama33 allergy_qwen3 allergy_gpt41 allergy_gpt51 allergy_claude45
 
-# AI-SUGGESTION: Run the 6 model runners concurrently (subprocess-per-model), instead of sequential make prerequisites.
-# Requires that the model-specific prompt files already exist (allergy_prompts_all).
-allergy_models_parallel: allergy_prompts_all
-	@$(PY) main/src/parallel_model_runs.py --pipeline allergy --root "$(RESULT_DIR)" --limit $(RUN_LIMIT) --max_parallel 6
+# AI-SUGGESTION: Parallel runner removed from this repo; keep target name but fall back to sequential execution.
+allergy_models_parallel: allergy_models
+	@echo "[note] parallel_model_runs.py not present; ran allergy_models sequentially."
 
 # -----------------------------
 # Scoring (generations_*.jsonl -> scored results)
@@ -177,7 +409,7 @@ allergy_score_all: allergy_score_llama31 allergy_score_llama33 allergy_score_qwe
 # Full pipeline
 allergy: allergy_models allergy_score_all
 
-# AI-SUGGESTION: Full pipeline with parallel model execution.
+# AI-SUGGESTION: Full pipeline with parallel model execution (now sequential fallback).
 allergy_parallel: allergy_models_parallel allergy_score_all
 
 # Smoke-test pipeline (limit 2 prompts)
@@ -202,6 +434,13 @@ MED_GEN_DIR ?= $(MED_RESULT_DIR)
 
 DEF_ALLERGY_OUT_ROOT := output/defense_allergy_omission
 DEF_MED_OUT_ROOT := output/defense_medication_omission
+
+# -----------------------------
+# Utility/overkill experiment: sandbox vs trust-anchored on benign patient updates
+# Uses main/src/sandbox_overkill_experiment.py
+# -----------------------------
+OVERKILL_ALLERGY_SANDBOX_OUT_ROOT := output/overkill_sandbox_allergy
+OVERKILL_ALLERGY_TA_OUT_ROOT := output/overkill_trustanchored_allergy
 
 prepare_medication:
 	@$(PY) -c "import os; os.makedirs(r'$(MED_SUBSET_DIR)', exist_ok=True); os.makedirs(r'$(MED_RESULT_DIR)', exist_ok=True)"
@@ -253,9 +492,9 @@ medication_claude45: medication_prompts
 
 medication_models: medication_prompts_all medication_llama31 medication_llama33 medication_qwen3 medication_gpt41 medication_gpt51 medication_claude45
 
-# AI-SUGGESTION: Run the 6 medication model runners concurrently.
-medication_models_parallel: medication_prompts_all
-	@$(PY) main/src/parallel_model_runs.py --pipeline medication --root "$(MED_RESULT_DIR)" --limit $(RUN_LIMIT) --max_parallel 6
+# AI-SUGGESTION: Parallel runner removed from this repo; keep target name but fall back to sequential execution.
+medication_models_parallel: medication_models
+	@echo "[note] parallel_model_runs.py not present; ran medication_models sequentially."
 
 # Scoring (generations_*.jsonl -> scored results)
 medication_score_llama31:
@@ -336,9 +575,9 @@ defense_allergy_claude45: defense_allergy_prompts_claude45
 
 defense_allergy_models: defense_allergy_prompts_all defense_allergy_llama31 defense_allergy_llama33 defense_allergy_qwen3 defense_allergy_gpt41 defense_allergy_gpt51 defense_allergy_claude45
 
-# AI-SUGGESTION: Run the 6 defense-allergy model runners concurrently.
-defense_allergy_models_parallel: defense_allergy_prompts_all
-	@$(PY) main/src/parallel_model_runs.py --pipeline defense_allergy --root "$(DEF_ALLERGY_OUT_ROOT)" --limit $(RUN_LIMIT) --max_parallel 6
+# AI-SUGGESTION: Parallel runner removed from this repo; keep target name but fall back to sequential execution.
+defense_allergy_models_parallel: defense_allergy_models
+	@echo "[note] parallel_model_runs.py not present; ran defense_allergy_models sequentially."
 
 defense_allergy_score_llama31:
 	@$(PY) main/src/defense_omission_experiment.py --task allergy --model_key llama31_groq --trusted_recall_threshold $(DEF_TRUSTED_RECALL_THRESH) --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --items_csv "$(SUBSET_DIR)/allergies_subset.csv" --max_patients $(MAX_PATIENTS) --seed $(SEED) --out_dir "$(DEF_ALLERGY_OUT_ROOT)/llama31_groq" --generations_jsonl "$(DEF_ALLERGY_OUT_ROOT)/llama31_groq/generations_llama31_groq.jsonl"
@@ -362,7 +601,7 @@ defense_allergy_score_all: defense_allergy_score_llama31 defense_allergy_score_l
 
 defense_allergy: defense_allergy_models defense_allergy_score_all
 
-# AI-SUGGESTION: Full pipeline with parallel model execution.
+# AI-SUGGESTION: Full pipeline with parallel model execution (now sequential fallback).
 defense_allergy_parallel: defense_allergy_models_parallel defense_allergy_score_all
 
 defense_allergy_test: RUN_LIMIT=2
@@ -371,6 +610,114 @@ defense_allergy_test: defense_allergy
 
 # Qwen-only defense run (allergy)
 defense_allergy_qwen: defense_allergy_prompts_qwen3 defense_allergy_qwen3 defense_allergy_score_qwen3
+
+# -----------------------------
+# Sandbox overkill proof: allergy (benign patient updates)
+# -----------------------------
+
+.PHONY: overkill_allergy_sandbox_prompts_llama31 overkill_allergy_sandbox_prompts_llama33 overkill_allergy_sandbox_prompts_qwen3 overkill_allergy_sandbox_prompts_gpt41 overkill_allergy_sandbox_prompts_gpt51 overkill_allergy_sandbox_prompts_claude45 overkill_allergy_sandbox_prompts_all
+.PHONY: overkill_allergy_ta_prompts_llama31 overkill_allergy_ta_prompts_llama33 overkill_allergy_ta_prompts_qwen3 overkill_allergy_ta_prompts_gpt41 overkill_allergy_ta_prompts_gpt51 overkill_allergy_ta_prompts_claude45 overkill_allergy_ta_prompts_all
+.PHONY: overkill_allergy_sandbox_llama31 overkill_allergy_sandbox_llama33 overkill_allergy_sandbox_qwen3 overkill_allergy_sandbox_gpt41 overkill_allergy_sandbox_gpt51 overkill_allergy_sandbox_claude45 overkill_allergy_sandbox_models
+.PHONY: overkill_allergy_ta_llama31 overkill_allergy_ta_llama33 overkill_allergy_ta_qwen3 overkill_allergy_ta_gpt41 overkill_allergy_ta_gpt51 overkill_allergy_ta_claude45 overkill_allergy_ta_models
+.PHONY: overkill_allergy_sandbox_score_llama31 overkill_allergy_sandbox_score_llama33 overkill_allergy_sandbox_score_qwen3 overkill_allergy_sandbox_score_gpt41 overkill_allergy_sandbox_score_gpt51 overkill_allergy_sandbox_score_claude45 overkill_allergy_sandbox_score_all
+.PHONY: overkill_allergy_ta_score_llama31 overkill_allergy_ta_score_llama33 overkill_allergy_ta_score_qwen3 overkill_allergy_ta_score_gpt41 overkill_allergy_ta_score_gpt51 overkill_allergy_ta_score_claude45 overkill_allergy_ta_score_all
+.PHONY: overkill_allergy overkill_allergy_test
+
+# Prompts (sandbox)
+overkill_allergy_sandbox_prompts_llama31: allergy_subdataset
+	@$(PY) main/src/sandbox_overkill_experiment.py --task allergy --variant sandbox --model_key llama31_groq --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --items_csv "$(SUBSET_DIR)/allergies_subset.csv" --max_patients $(MAX_PATIENTS) --seed $(SEED) --out_dir "$(OVERKILL_ALLERGY_SANDBOX_OUT_ROOT)/llama31_groq"
+overkill_allergy_sandbox_prompts_llama33: allergy_subdataset
+	@$(PY) main/src/sandbox_overkill_experiment.py --task allergy --variant sandbox --model_key llama33_groq --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --items_csv "$(SUBSET_DIR)/allergies_subset.csv" --max_patients $(MAX_PATIENTS) --seed $(SEED) --out_dir "$(OVERKILL_ALLERGY_SANDBOX_OUT_ROOT)/llama33_groq"
+overkill_allergy_sandbox_prompts_qwen3: allergy_subdataset
+	@$(PY) main/src/sandbox_overkill_experiment.py --task allergy --variant sandbox --model_key qwen3_groq --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --items_csv "$(SUBSET_DIR)/allergies_subset.csv" --max_patients $(MAX_PATIENTS) --seed $(SEED) --out_dir "$(OVERKILL_ALLERGY_SANDBOX_OUT_ROOT)/qwen3_groq"
+overkill_allergy_sandbox_prompts_gpt41: allergy_subdataset
+	@$(PY) main/src/sandbox_overkill_experiment.py --task allergy --variant sandbox --model_key gpt41 --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --items_csv "$(SUBSET_DIR)/allergies_subset.csv" --max_patients $(MAX_PATIENTS) --seed $(SEED) --out_dir "$(OVERKILL_ALLERGY_SANDBOX_OUT_ROOT)/gpt41"
+overkill_allergy_sandbox_prompts_gpt51: allergy_subdataset
+	@$(PY) main/src/sandbox_overkill_experiment.py --task allergy --variant sandbox --model_key gpt51 --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --items_csv "$(SUBSET_DIR)/allergies_subset.csv" --max_patients $(MAX_PATIENTS) --seed $(SEED) --out_dir "$(OVERKILL_ALLERGY_SANDBOX_OUT_ROOT)/gpt51"
+overkill_allergy_sandbox_prompts_claude45: allergy_subdataset
+	@$(PY) main/src/sandbox_overkill_experiment.py --task allergy --variant sandbox --model_key claude45 --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --items_csv "$(SUBSET_DIR)/allergies_subset.csv" --max_patients $(MAX_PATIENTS) --seed $(SEED) --out_dir "$(OVERKILL_ALLERGY_SANDBOX_OUT_ROOT)/claude45"
+overkill_allergy_sandbox_prompts_all: overkill_allergy_sandbox_prompts_llama31 overkill_allergy_sandbox_prompts_llama33 overkill_allergy_sandbox_prompts_qwen3 overkill_allergy_sandbox_prompts_gpt41 overkill_allergy_sandbox_prompts_gpt51 overkill_allergy_sandbox_prompts_claude45
+
+# Prompts (trust-anchored)
+overkill_allergy_ta_prompts_llama31: allergy_subdataset
+	@$(PY) main/src/sandbox_overkill_experiment.py --task allergy --variant trust_anchored --model_key llama31_groq --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --items_csv "$(SUBSET_DIR)/allergies_subset.csv" --max_patients $(MAX_PATIENTS) --seed $(SEED) --out_dir "$(OVERKILL_ALLERGY_TA_OUT_ROOT)/llama31_groq"
+overkill_allergy_ta_prompts_llama33: allergy_subdataset
+	@$(PY) main/src/sandbox_overkill_experiment.py --task allergy --variant trust_anchored --model_key llama33_groq --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --items_csv "$(SUBSET_DIR)/allergies_subset.csv" --max_patients $(MAX_PATIENTS) --seed $(SEED) --out_dir "$(OVERKILL_ALLERGY_TA_OUT_ROOT)/llama33_groq"
+overkill_allergy_ta_prompts_qwen3: allergy_subdataset
+	@$(PY) main/src/sandbox_overkill_experiment.py --task allergy --variant trust_anchored --model_key qwen3_groq --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --items_csv "$(SUBSET_DIR)/allergies_subset.csv" --max_patients $(MAX_PATIENTS) --seed $(SEED) --out_dir "$(OVERKILL_ALLERGY_TA_OUT_ROOT)/qwen3_groq"
+overkill_allergy_ta_prompts_gpt41: allergy_subdataset
+	@$(PY) main/src/sandbox_overkill_experiment.py --task allergy --variant trust_anchored --model_key gpt41 --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --items_csv "$(SUBSET_DIR)/allergies_subset.csv" --max_patients $(MAX_PATIENTS) --seed $(SEED) --out_dir "$(OVERKILL_ALLERGY_TA_OUT_ROOT)/gpt41"
+overkill_allergy_ta_prompts_gpt51: allergy_subdataset
+	@$(PY) main/src/sandbox_overkill_experiment.py --task allergy --variant trust_anchored --model_key gpt51 --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --items_csv "$(SUBSET_DIR)/allergies_subset.csv" --max_patients $(MAX_PATIENTS) --seed $(SEED) --out_dir "$(OVERKILL_ALLERGY_TA_OUT_ROOT)/gpt51"
+overkill_allergy_ta_prompts_claude45: allergy_subdataset
+	@$(PY) main/src/sandbox_overkill_experiment.py --task allergy --variant trust_anchored --model_key claude45 --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --items_csv "$(SUBSET_DIR)/allergies_subset.csv" --max_patients $(MAX_PATIENTS) --seed $(SEED) --out_dir "$(OVERKILL_ALLERGY_TA_OUT_ROOT)/claude45"
+overkill_allergy_ta_prompts_all: overkill_allergy_ta_prompts_llama31 overkill_allergy_ta_prompts_llama33 overkill_allergy_ta_prompts_qwen3 overkill_allergy_ta_prompts_gpt41 overkill_allergy_ta_prompts_gpt51 overkill_allergy_ta_prompts_claude45
+
+# Model runs
+overkill_allergy_sandbox_llama31: overkill_allergy_sandbox_prompts_llama31
+	@$(PY) "LLM Model/Llama 3.1/llama31_groq_runner.py" --model "$(LLAMA31_MODEL)" --prompts_jsonl "$(OVERKILL_ALLERGY_SANDBOX_OUT_ROOT)/llama31_groq/prompts.jsonl" --out_jsonl "$(OVERKILL_ALLERGY_SANDBOX_OUT_ROOT)/llama31_groq/generations.jsonl" --max_tokens 0 --limit $(RUN_LIMIT)
+overkill_allergy_sandbox_llama33: overkill_allergy_sandbox_prompts_llama33
+	@$(PY) "LLM Model/Llama 3.3/llama33_groq_runner.py" --model "$(LLAMA33_MODEL)" --prompts_jsonl "$(OVERKILL_ALLERGY_SANDBOX_OUT_ROOT)/llama33_groq/prompts.jsonl" --out_jsonl "$(OVERKILL_ALLERGY_SANDBOX_OUT_ROOT)/llama33_groq/generations.jsonl" --max_tokens 0 --limit $(RUN_LIMIT)
+overkill_allergy_sandbox_qwen3: overkill_allergy_sandbox_prompts_qwen3
+	@$(PY) "LLM Model/Qwen 3/qwen3_bedrock_runner.py" --model "$(QWEN3_MODEL)" --prompts_jsonl "$(OVERKILL_ALLERGY_SANDBOX_OUT_ROOT)/qwen3_groq/prompts.jsonl" --out_jsonl "$(OVERKILL_ALLERGY_SANDBOX_OUT_ROOT)/qwen3_groq/generations.jsonl" --max_tokens 0 --limit $(RUN_LIMIT)
+overkill_allergy_sandbox_gpt41: overkill_allergy_sandbox_prompts_gpt41
+	@$(PY) "LLM Model/GPT-4.1/gpt41_api.py" --model "$(GPT41_MODEL)" --prompts_jsonl "$(OVERKILL_ALLERGY_SANDBOX_OUT_ROOT)/gpt41/prompts.jsonl" --out_jsonl "$(OVERKILL_ALLERGY_SANDBOX_OUT_ROOT)/gpt41/generations.jsonl" --limit $(RUN_LIMIT)
+overkill_allergy_sandbox_gpt51: overkill_allergy_sandbox_prompts_gpt51
+	@$(PY) "LLM Model/GPT-5.1/gpt51_api.py" --model "$(GPT51_MODEL)" --prompts_jsonl "$(OVERKILL_ALLERGY_SANDBOX_OUT_ROOT)/gpt51/prompts.jsonl" --out_jsonl "$(OVERKILL_ALLERGY_SANDBOX_OUT_ROOT)/gpt51/generations.jsonl" --limit $(RUN_LIMIT)
+overkill_allergy_sandbox_claude45: overkill_allergy_sandbox_prompts_claude45
+	@$(PY) "LLM Model/Claude 4.5/claude45_api.py" --model "$(CLAUDE45_MODEL)" --prompts_jsonl "$(OVERKILL_ALLERGY_SANDBOX_OUT_ROOT)/claude45/prompts.jsonl" --out_jsonl "$(OVERKILL_ALLERGY_SANDBOX_OUT_ROOT)/claude45/generations.jsonl" --limit $(RUN_LIMIT)
+overkill_allergy_sandbox_models: overkill_allergy_sandbox_prompts_all overkill_allergy_sandbox_llama31 overkill_allergy_sandbox_llama33 overkill_allergy_sandbox_qwen3 overkill_allergy_sandbox_gpt41 overkill_allergy_sandbox_gpt51 overkill_allergy_sandbox_claude45
+
+overkill_allergy_ta_llama31: overkill_allergy_ta_prompts_llama31
+	@$(PY) "LLM Model/Llama 3.1/llama31_groq_runner.py" --model "$(LLAMA31_MODEL)" --prompts_jsonl "$(OVERKILL_ALLERGY_TA_OUT_ROOT)/llama31_groq/prompts.jsonl" --out_jsonl "$(OVERKILL_ALLERGY_TA_OUT_ROOT)/llama31_groq/generations.jsonl" --max_tokens 0 --limit $(RUN_LIMIT)
+overkill_allergy_ta_llama33: overkill_allergy_ta_prompts_llama33
+	@$(PY) "LLM Model/Llama 3.3/llama33_groq_runner.py" --model "$(LLAMA33_MODEL)" --prompts_jsonl "$(OVERKILL_ALLERGY_TA_OUT_ROOT)/llama33_groq/prompts.jsonl" --out_jsonl "$(OVERKILL_ALLERGY_TA_OUT_ROOT)/llama33_groq/generations.jsonl" --max_tokens 0 --limit $(RUN_LIMIT)
+overkill_allergy_ta_qwen3: overkill_allergy_ta_prompts_qwen3
+	@$(PY) "LLM Model/Qwen 3/qwen3_bedrock_runner.py" --model "$(QWEN3_MODEL)" --prompts_jsonl "$(OVERKILL_ALLERGY_TA_OUT_ROOT)/qwen3_groq/prompts.jsonl" --out_jsonl "$(OVERKILL_ALLERGY_TA_OUT_ROOT)/qwen3_groq/generations.jsonl" --max_tokens 0 --limit $(RUN_LIMIT)
+overkill_allergy_ta_gpt41: overkill_allergy_ta_prompts_gpt41
+	@$(PY) "LLM Model/GPT-4.1/gpt41_api.py" --model "$(GPT41_MODEL)" --prompts_jsonl "$(OVERKILL_ALLERGY_TA_OUT_ROOT)/gpt41/prompts.jsonl" --out_jsonl "$(OVERKILL_ALLERGY_TA_OUT_ROOT)/gpt41/generations.jsonl" --limit $(RUN_LIMIT)
+overkill_allergy_ta_gpt51: overkill_allergy_ta_prompts_gpt51
+	@$(PY) "LLM Model/GPT-5.1/gpt51_api.py" --model "$(GPT51_MODEL)" --prompts_jsonl "$(OVERKILL_ALLERGY_TA_OUT_ROOT)/gpt51/prompts.jsonl" --out_jsonl "$(OVERKILL_ALLERGY_TA_OUT_ROOT)/gpt51/generations.jsonl" --limit $(RUN_LIMIT)
+overkill_allergy_ta_claude45: overkill_allergy_ta_prompts_claude45
+	@$(PY) "LLM Model/Claude 4.5/claude45_api.py" --model "$(CLAUDE45_MODEL)" --prompts_jsonl "$(OVERKILL_ALLERGY_TA_OUT_ROOT)/claude45/prompts.jsonl" --out_jsonl "$(OVERKILL_ALLERGY_TA_OUT_ROOT)/claude45/generations.jsonl" --limit $(RUN_LIMIT)
+overkill_allergy_ta_models: overkill_allergy_ta_prompts_all overkill_allergy_ta_llama31 overkill_allergy_ta_llama33 overkill_allergy_ta_qwen3 overkill_allergy_ta_gpt41 overkill_allergy_ta_gpt51 overkill_allergy_ta_claude45
+
+# Scoring
+overkill_allergy_sandbox_score_llama31:
+	@$(PY) main/src/sandbox_overkill_experiment.py --task allergy --variant sandbox --model_key llama31_groq --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --items_csv "$(SUBSET_DIR)/allergies_subset.csv" --max_patients $(MAX_PATIENTS) --seed $(SEED) --out_dir "$(OVERKILL_ALLERGY_SANDBOX_OUT_ROOT)/llama31_groq" --generations_jsonl "$(OVERKILL_ALLERGY_SANDBOX_OUT_ROOT)/llama31_groq/generations.jsonl"
+overkill_allergy_sandbox_score_llama33:
+	@$(PY) main/src/sandbox_overkill_experiment.py --task allergy --variant sandbox --model_key llama33_groq --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --items_csv "$(SUBSET_DIR)/allergies_subset.csv" --max_patients $(MAX_PATIENTS) --seed $(SEED) --out_dir "$(OVERKILL_ALLERGY_SANDBOX_OUT_ROOT)/llama33_groq" --generations_jsonl "$(OVERKILL_ALLERGY_SANDBOX_OUT_ROOT)/llama33_groq/generations.jsonl"
+overkill_allergy_sandbox_score_qwen3:
+	@$(PY) main/src/sandbox_overkill_experiment.py --task allergy --variant sandbox --model_key qwen3_groq --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --items_csv "$(SUBSET_DIR)/allergies_subset.csv" --max_patients $(MAX_PATIENTS) --seed $(SEED) --out_dir "$(OVERKILL_ALLERGY_SANDBOX_OUT_ROOT)/qwen3_groq" --generations_jsonl "$(OVERKILL_ALLERGY_SANDBOX_OUT_ROOT)/qwen3_groq/generations.jsonl"
+overkill_allergy_sandbox_score_gpt41:
+	@$(PY) main/src/sandbox_overkill_experiment.py --task allergy --variant sandbox --model_key gpt41 --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --items_csv "$(SUBSET_DIR)/allergies_subset.csv" --max_patients $(MAX_PATIENTS) --seed $(SEED) --out_dir "$(OVERKILL_ALLERGY_SANDBOX_OUT_ROOT)/gpt41" --generations_jsonl "$(OVERKILL_ALLERGY_SANDBOX_OUT_ROOT)/gpt41/generations.jsonl"
+overkill_allergy_sandbox_score_gpt51:
+	@$(PY) main/src/sandbox_overkill_experiment.py --task allergy --variant sandbox --model_key gpt51 --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --items_csv "$(SUBSET_DIR)/allergies_subset.csv" --max_patients $(MAX_PATIENTS) --seed $(SEED) --out_dir "$(OVERKILL_ALLERGY_SANDBOX_OUT_ROOT)/gpt51" --generations_jsonl "$(OVERKILL_ALLERGY_SANDBOX_OUT_ROOT)/gpt51/generations.jsonl"
+overkill_allergy_sandbox_score_claude45:
+	@$(PY) main/src/sandbox_overkill_experiment.py --task allergy --variant sandbox --model_key claude45 --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --items_csv "$(SUBSET_DIR)/allergies_subset.csv" --max_patients $(MAX_PATIENTS) --seed $(SEED) --out_dir "$(OVERKILL_ALLERGY_SANDBOX_OUT_ROOT)/claude45" --generations_jsonl "$(OVERKILL_ALLERGY_SANDBOX_OUT_ROOT)/claude45/generations.jsonl"
+overkill_allergy_sandbox_score_all: overkill_allergy_sandbox_score_llama31 overkill_allergy_sandbox_score_llama33 overkill_allergy_sandbox_score_qwen3 overkill_allergy_sandbox_score_gpt41 overkill_allergy_sandbox_score_gpt51 overkill_allergy_sandbox_score_claude45
+
+overkill_allergy_ta_score_llama31:
+	@$(PY) main/src/sandbox_overkill_experiment.py --task allergy --variant trust_anchored --model_key llama31_groq --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --items_csv "$(SUBSET_DIR)/allergies_subset.csv" --max_patients $(MAX_PATIENTS) --seed $(SEED) --out_dir "$(OVERKILL_ALLERGY_TA_OUT_ROOT)/llama31_groq" --generations_jsonl "$(OVERKILL_ALLERGY_TA_OUT_ROOT)/llama31_groq/generations.jsonl"
+overkill_allergy_ta_score_llama33:
+	@$(PY) main/src/sandbox_overkill_experiment.py --task allergy --variant trust_anchored --model_key llama33_groq --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --items_csv "$(SUBSET_DIR)/allergies_subset.csv" --max_patients $(MAX_PATIENTS) --seed $(SEED) --out_dir "$(OVERKILL_ALLERGY_TA_OUT_ROOT)/llama33_groq" --generations_jsonl "$(OVERKILL_ALLERGY_TA_OUT_ROOT)/llama33_groq/generations.jsonl"
+overkill_allergy_ta_score_qwen3:
+	@$(PY) main/src/sandbox_overkill_experiment.py --task allergy --variant trust_anchored --model_key qwen3_groq --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --items_csv "$(SUBSET_DIR)/allergies_subset.csv" --max_patients $(MAX_PATIENTS) --seed $(SEED) --out_dir "$(OVERKILL_ALLERGY_TA_OUT_ROOT)/qwen3_groq" --generations_jsonl "$(OVERKILL_ALLERGY_TA_OUT_ROOT)/qwen3_groq/generations.jsonl"
+overkill_allergy_ta_score_gpt41:
+	@$(PY) main/src/sandbox_overkill_experiment.py --task allergy --variant trust_anchored --model_key gpt41 --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --items_csv "$(SUBSET_DIR)/allergies_subset.csv" --max_patients $(MAX_PATIENTS) --seed $(SEED) --out_dir "$(OVERKILL_ALLERGY_TA_OUT_ROOT)/gpt41" --generations_jsonl "$(OVERKILL_ALLERGY_TA_OUT_ROOT)/gpt41/generations.jsonl"
+overkill_allergy_ta_score_gpt51:
+	@$(PY) main/src/sandbox_overkill_experiment.py --task allergy --variant trust_anchored --model_key gpt51 --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --items_csv "$(SUBSET_DIR)/allergies_subset.csv" --max_patients $(MAX_PATIENTS) --seed $(SEED) --out_dir "$(OVERKILL_ALLERGY_TA_OUT_ROOT)/gpt51" --generations_jsonl "$(OVERKILL_ALLERGY_TA_OUT_ROOT)/gpt51/generations.jsonl"
+overkill_allergy_ta_score_claude45:
+	@$(PY) main/src/sandbox_overkill_experiment.py --task allergy --variant trust_anchored --model_key claude45 --patient_ids_txt "$(SUBSET_DIR)/patient_ids.txt" --patients_csv "$(SUBSET_DIR)/patients_subset.csv" --items_csv "$(SUBSET_DIR)/allergies_subset.csv" --max_patients $(MAX_PATIENTS) --seed $(SEED) --out_dir "$(OVERKILL_ALLERGY_TA_OUT_ROOT)/claude45" --generations_jsonl "$(OVERKILL_ALLERGY_TA_OUT_ROOT)/claude45/generations.jsonl"
+overkill_allergy_ta_score_all: overkill_allergy_ta_score_llama31 overkill_allergy_ta_score_llama33 overkill_allergy_ta_score_qwen3 overkill_allergy_ta_score_gpt41 overkill_allergy_ta_score_gpt51 overkill_allergy_ta_score_claude45
+
+# Full pipelines
+overkill_allergy: overkill_allergy_sandbox_models overkill_allergy_sandbox_score_all overkill_allergy_ta_models overkill_allergy_ta_score_all
+
+# Smoke-test pipeline
+overkill_allergy_test: RUN_LIMIT=4
+overkill_allergy_test: MAX_PATIENTS=2
+overkill_allergy_test: overkill_allergy
 
 # -----------------------------
 # Defense: Medication omission (trusted/untrusted JSON + verifier scoring)
@@ -416,9 +763,9 @@ defense_medication_claude45: defense_medication_prompts_claude45
 
 defense_medication_models: defense_medication_prompts_all defense_medication_llama31 defense_medication_llama33 defense_medication_qwen3 defense_medication_gpt41 defense_medication_gpt51 defense_medication_claude45
 
-# AI-SUGGESTION: Run the 6 defense-medication model runners concurrently.
-defense_medication_models_parallel: defense_medication_prompts_all
-	@$(PY) main/src/parallel_model_runs.py --pipeline defense_medication --root "$(DEF_MED_OUT_ROOT)" --limit $(RUN_LIMIT) --max_parallel 6
+# AI-SUGGESTION: Parallel runner removed from this repo; keep target name but fall back to sequential execution.
+defense_medication_models_parallel: defense_medication_models
+	@echo "[note] parallel_model_runs.py not present; ran defense_medication_models sequentially."
 
 defense_medication_score_llama31:
 	@$(PY) main/src/defense_omission_experiment.py --task medication --model_key llama31_groq --trusted_recall_threshold $(DEF_TRUSTED_RECALL_THRESH) --patient_ids_txt "$(MED_SUBSET_DIR)/patient_ids.txt" --patients_csv "$(MED_SUBSET_DIR)/patients_subset.csv" --items_csv "$(MED_SUBSET_DIR)/medications_subset.csv" --max_patients $(MED_MAX_PATIENTS) --seed $(SEED) --out_dir "$(DEF_MED_OUT_ROOT)/llama31_groq" --generations_jsonl "$(DEF_MED_OUT_ROOT)/llama31_groq/generations_llama31_groq.jsonl"
@@ -442,7 +789,7 @@ defense_medication_score_all: defense_medication_score_llama31 defense_medicatio
 
 defense_medication: defense_medication_models defense_medication_score_all
 
-# AI-SUGGESTION: Full pipeline with parallel model execution.
+# AI-SUGGESTION: Full pipeline with parallel model execution (now sequential fallback).
 defense_medication_parallel: defense_medication_models_parallel defense_medication_score_all
 
 defense_medication_test: RUN_LIMIT=2

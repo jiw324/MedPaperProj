@@ -78,12 +78,12 @@ Modern EHR systems store heterogeneous clinical information, including both stru
   \centering
   \vspace{1.5\baselineskip}
   \includegraphics[width=\columnwidth,keepaspectratio]{img/EHR_System}
-  \caption{High-level schematic of an EHR-integrated LLM workflow, where clinician-verified EHR data and live user interactions can jointly influence LLM outputs used for downstream clinical, educational, and research tasks \citep{rgLLMEHRFig3_378394229}.}
+  \caption{High-level schematic of an EHR-integrated LLM workflow. Patient data and patient-authored portal messages are stored in the EHR database; patients can upload/modify messages, and clinicians can upload/modify chart data through routine EHR use. When a clinician requests an output (e.g., a provider-facing summary or a derived visualization), the EHR system assembles mixed-trust context from stored records and messages, queries an LLM, and returns a result influenced by both sources. The key trust boundary is between clinician-verified chart facts (trusted) and patient-authored messages (untrusted) that may be co-presented in the generation context \citep{onc_playbook_ehr,onc_secure_messages,woo2025scoping}.}
   \label{fig:ehr_system}
   \vspace{-1.5\baselineskip}
 \end{figure}
 
-In practice, EHR interfaces and surrounding applications often present clinicians with curated views that combine structured record elements with free-text documentation and message threads. This mixed presentation is particularly common in documentation workflows, where clinicians reconcile discrete chart facts with contextual narrative text and recent communications. The resulting record is used for ongoing care coordination, clinical decision-making, and longitudinal documentation \citep{wang2023ehr_source}.
+In practice, EHR interfaces and surrounding applications often present clinicians with curated views that combine structured record elements with free-text documentation and message threads. This mixed presentation is particularly common in documentation workflows, where clinicians reconcile discrete chart facts with contextual narrative text and recent communications; as a result, the generation context may include both clinician-verified record entries and unverified patient-authored text \citep{wang2023ehr_source}.
 We refer to this EHR-integrated workflow throughout the paper; \Cref{fig:ehr_system} provides the corresponding high-level system context for our mixed-trust threat model.
 
 \subsection{Threat Model}
@@ -298,6 +298,36 @@ qwen3 & 0.940 & 0.021 & 0.953 & 0.051 \\
 
 The omission attack is consistently damaging in the baseline setting: several models exhibit near-complete failure under attack (e.g., allergy ASR up to $1.000$ and medication ASR up to $0.997$), demonstrating that untrusted patient text can override clinician-verified chart facts during generation. % AI-SUGGESTION: Fix broken sentence spanning across the table.
 \textbf{Defense effectiveness (mostly good, but imperfect).} The trust-anchored integrity-check defense substantially reduces \emph{silent} integrity failures by forcing conflicts to become explicit, driving defended ASR close to zero on allergy omission (0.000--0.024) and materially lower on medication omission (0.049--0.198). However, the defense is not uniformly robust across all model/task pairs: residual silent failures remain non-trivial for some settings (e.g., \texttt{claude45} on medication), and clean-set false positives or parsing instability can impose deployment costs (discussed below).
+
+\textbf{Standard defense baselines (IDS, sandboxing, verifier gate).}
+We additionally implement three common prompt-injection mitigations discussed in \S\ref{sec:setting}--\S\ref{sec:results}: \emph{instruction--data separation} (IDS prompt structuring), \emph{least privilege / sandboxing} (exclude untrusted text), and an \emph{output validation / verifier gate} (post-generation check).
+On reruns with $N=100$ patients for each task (clean + attack per patient; $200$ generations per model), \Cref{tab:std_defenses_combined} shows that IDS and sandboxing reduce attack success rates relative to the baseline across all evaluated models, but do not eliminate failures entirely (e.g., allergy IDS ASR remains $0.26$ for \texttt{gpt51}). The verifier gate catches a substantial fraction of attacked outputs, with detection varying by model (e.g., medication \texttt{llama33} flags $0.52$ of attacks vs.\ $1.00$ for several models) and a small clean-set false-flag rate ($0.01$--$0.09$ across tasks/models).
+
+\begin{table*}[t]
+\centering
+\caption{Standard defense baselines on $N=100$ patient reruns (clean + attack). For IDS and sandboxing we report attack success rate (ASR; lower is better). For the output-validation gate we report the fraction flagged under attack (higher is better) and flagged under clean (lower is better; false positives).}
+\label{tab:std_defenses_combined}
+% AI-SUGGESTION: Ensure the combined table fits within \textwidth in two-column layout.
+\setlength{\tabcolsep}{3.2pt}
+\renewcommand{\arraystretch}{1.05}
+\scriptsize
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lccccc|ccccc}
+\toprule
+& \multicolumn{5}{c|}{Allergy} & \multicolumn{5}{c}{Medication} \\
+\cmidrule(lr){2-6}\cmidrule(lr){7-11}
+Model & Baseline ASR & IDS ASR & Sandbox ASR & Gate flag A & Gate flag C & Baseline ASR & IDS ASR & Sandbox ASR & Gate flag A & Gate flag C \\
+\midrule
+claude45 & 1.00 & 0.03 & 0.05 & 0.95 & 0.04 & 0.98 & 0.09 & 0.13 & 1.00 & 0.09 \\
+gpt41    & 1.00 & 0.03 & 0.03 & 1.00 & 0.02 & 0.88 & 0.07 & 0.14 & 0.93 & 0.06 \\
+gpt51    & 0.95 & 0.26 & 0.07 & 1.00 & 0.02 & 1.00 & 0.06 & 0.13 & 1.00 & 0.05 \\
+llama31  & 0.47 & 0.03 & 0.03 & 0.80 & 0.02 & 0.74 & 0.06 & 0.21 & 0.81 & 0.08 \\
+llama33  & 0.99 & 0.00 & 0.03 & 0.99 & 0.02 & 0.32 & 0.09 & 0.15 & 0.52 & 0.01 \\
+qwen3    & 0.96 & 0.02 & 0.01 & 0.96 & 0.02 & 0.98 & 0.03 & 0.07 & 0.98 & 0.04 \\
+\bottomrule
+\end{tabular}
+} % resizebox
+\end{table*}
 
 \textbf{Clean-set costs and failure modes (limitations).}
 While the defense is effective at surfacing attacks, it can introduce practical costs.
