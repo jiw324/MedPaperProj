@@ -48,19 +48,17 @@
 
 \section{Introduction}
 
-Electronic Health Record (EHR) systems are the core digital platforms used in modern healthcare to document, store, retrieve, and exchange patient information across clinical settings. They maintain structured data such as diagnoses, medications, allergies, laboratory results, vital signs, and immunizations, alongside unstructured content including clinician notes, discharge summaries, imaging reports, and patient portal messages. EHRs support routine clinical workflows such as documentation, order entry, care coordination, and controlled access to patient records by authorized clinicians and staff within and across organizations \citep{onc_ehr_benefits,onc_playbook_ehr,wang2023ehr_source}.
+Electronic Health Record (EHR) systems store clinician-verified chart facts (e.g., diagnoses, medications, allergies, labs) alongside unstructured notes and patient-portal messages and support routine clinical workflows \citep{onc_ehr_benefits,onc_playbook_ehr,wang2023ehr_source}.
 
-Large language models (LLMs) are increasingly integrated into EHR systems to assist with clinical documentation tasks, including chart summarization, handoff notes, and provider-facing summaries \citep{woo2025scoping,bednarczyk2025summarization,aalijamia2025bhc}. In these workflows, LLMs often operate over \emph{mixed-trust inputs}, combining structured, clinician-verified patient records with unstructured patient-reported text originating from portals or messaging systems. Although the underlying EHR data may remain accurate and uncompromised, the model’s generated output can nonetheless become clinically incorrect if untrusted instructions override verified facts during generation.
+LLMs are increasingly integrated into EHR workflows for chart summarization and related documentation tasks \citep{woo2025scoping,bednarczyk2025summarization,aalijamia2025bhc}. In practice, the generation context can be \emph{mixed-trust}: verified chart facts are co-presented with untrusted patient-authored text. Even when the underlying database remains correct, untrusted claims can distort the generated summary by overriding or suppressing verified facts during generation.
 
-This integration gives rise to a subtle but safety-critical failure mode that is not well captured by existing evaluations: \emph{semantic integrity violations at generation time}. Unlike database tampering or system compromise, these failures occur entirely within the model’s instruction-following behavior when it is presented with conflicting trusted and untrusted inputs. Recent clinical AI evaluations have raised concerns about factual inaccuracies and reliability in LLM-generated clinical documentation, but often without isolating the mechanisms by which such errors arise \citep{chung2025nejmai,croxford2025evaluating}.
+We study a safety-critical failure mode specific to this integration: \emph{generation-time semantic integrity violations}, where clinician-verified facts are omitted or contradicted in the produced summary because the model mis-handles conflicting trusted and untrusted inputs. This mechanism is distinct from database tampering or system compromise and complements broader concerns about factual reliability of clinical LLM outputs \citep{chung2025nejmai,croxford2025evaluating}.
 
-Prior benchmarks for clinical LLMs have primarily emphasized task performance, such as question answering accuracy, summarization quality, or clinical reasoning, typically using EHR-derived corpora and benchmark datasets \citep{kweon2024ehrnoteqa,aalijamia2025bhc}. These evaluations generally assume a uniform trust level across model inputs and do not explicitly assess whether verified clinical facts are preserved in the presence of untrusted instructions. Consequently, they offer limited insight into model behavior under realistic EHR integration settings, where trust boundaries exist implicitly rather than being formally enforced.
+Prior clinical LLM benchmarks primarily emphasize task performance (e.g., QA accuracy or summarization quality) under a single trust assumption and do not explicitly test whether verified facts are preserved in the presence of untrusted instructions \citep{kweon2024ehrnoteqa,aalijamia2025bhc}. As a result, they provide limited insight into trust-boundary failures in realistic EHR-integrated settings.
 
 In this work, we introduce a benchmark for evaluating semantic integrity in EHR-integrated LLMs under mixed-trust inputs. The benchmark formalizes a simple but realistic workflow: (1) the model is provided with structured ground-truth patient data representing clinician-verified EHR facts; (2) an untrusted instruction is introduced; (3) the model is tasked with generating a clinical summary; and (4) the output is compared against the ground truth to identify integrity violations. We consider both clean and adversarial conditions to isolate the effect of untrusted instruction dominance, closely related to prompt-injection--style vulnerabilities described in prior LLM security guidance \citep{owasp_prompt_injection}.
 
-Using this framework, we evaluate multiple frontier and open-weight LLMs on chart summarization tasks involving allergies and medications. We quantify integrity failures using automatic metrics that capture both fact omission and explicit contradiction, and analyze how these behaviors vary across models. We further evaluate a trust-anchored integrity-check defense that enforces explicit separation between trusted EHR facts and untrusted patient-reported information---not as a complete mitigation, but as a diagnostic mechanism for surfacing otherwise silent errors.
-
-Our defense, \emph{trust-anchored summarization}, runs the model separately on trusted chart facts and on untrusted patient text and then performs an integrity check to flag semantic conflicts before any untrusted content is incorporated into the clinician-facing summary.
+Using this framework, we evaluate multiple frontier and open-weight LLMs on allergy and medication summarization. We quantify integrity failures via omission- and contradiction-oriented metrics and analyze how vulnerability varies across models. We also evaluate a defense we implement, \emph{trust-anchored summarization}, which separates trusted chart facts from untrusted patient text at generation time and uses an integrity check to flag semantic conflicts before any untrusted content is incorporated into the clinician-facing summary; we treat this defense as a diagnostic mechanism rather than a complete mitigation.
 
 Our contributions are threefold:
 \begin{enumerate}
@@ -74,19 +72,18 @@ By isolating generation-time semantic integrity failures from infrastructure com
 \section{Background and Problem Setting}
 \label{sec:setting}
 
-Modern EHR systems store heterogeneous clinical information, including both structured fields (e.g., diagnoses, medications, allergies, vital signs, and laboratory measurements) and unstructured narrative content (e.g., clinician notes, discharge summaries, and imaging reports) \citep{ehrenstein2019obtaining,kim2023challenges}. In parallel, many health systems support patient-facing portals that enable patients to access portions of their record and communicate with care teams through secure messaging \citep{onc_secure_messages,ahrq_secure_messaging}. As a result, routine clinical workflows frequently involve reviewing and synthesizing information that originates from different documentation channels and differs in format, granularity, and verification status.
+Modern EHR systems combine clinician-verified structured fields with unstructured narrative content and patient-facing portal messages \citep{ehrenstein2019obtaining,kim2024challenges,onc_secure_messages,ahrq_secure_messaging}. In EHR-integrated LLM workflows, these sources may be assembled into a single prompt for summarization, creating an implicit trust boundary between verified chart facts and untrusted patient-authored text.
 
 \begin{figure}[t]
   \centering
   \vspace{1.5\baselineskip}
   \includegraphics[width=\columnwidth,keepaspectratio]{img/EHR_System}
-  \caption{High-level schematic of an EHR-integrated LLM workflow. Patient data and patient-authored portal messages are stored in the EHR database; patients can upload/modify messages, and clinicians can upload/modify chart data through routine EHR use. When a clinician requests an output (e.g., a provider-facing summary or a derived visualization), the EHR system assembles mixed-trust context from stored records and messages, queries an LLM, and returns a result influenced by both sources. The key trust boundary is between clinician-verified chart facts (trusted) and patient-authored messages (untrusted) that may be co-presented in the generation context \citep{onc_playbook_ehr,onc_secure_messages,woo2025scoping}. Figure created with OpenAI GPT-5.2 and draw.io (diagrams.net) \citep{openai_gpt52,drawio_diagrams_net}.}
+  \caption{High-level schematic of an EHR-integrated LLM workflow. Patient data and patient-authored portal messages are stored in the EHR database; patients can upload/modify messages, and clinicians can upload/modify chart data through routine EHR use. When a clinician requests an output (e.g., a provider-facing summary or a derived visualization), the EHR system assembles mixed-trust context from stored records and messages, queries an LLM, and returns a result influenced by both sources. The key trust boundary is between clinician-verified chart facts (trusted) and patient-authored messages (untrusted) that may be co-presented in the generation context \citep{onc_playbook_ehr,onc_secure_messages,woo2025scoping}. Figure created with OpenAI GPT-5.2 and draw.io (diagrams.net) \citep{openai_image_generation,drawio_diagrams_net}.}
   \label{fig:ehr_system}
   \vspace{-1.5\baselineskip}
 \end{figure}
 
-In practice, EHR interfaces and surrounding applications often present clinicians with curated views that combine structured record elements with free-text documentation and message threads. This mixed presentation is particularly common in documentation workflows, where clinicians reconcile discrete chart facts with contextual narrative text and recent communications; as a result, the generation context may include both clinician-verified record entries and unverified patient-authored text \citep{wang2023ehr_source}.
-We refer to this EHR-integrated workflow throughout the paper; \Cref{fig:ehr_system} provides the corresponding high-level system context for our mixed-trust threat model.
+In practice, clinicians often review mixed views that combine structured record elements with free text and message threads \citep{wang2023ehr_source}. We refer to this setting throughout; \Cref{fig:ehr_system} summarizes the EHR-integrated context and the key trust boundary.
 
 \subsection{Threat Model}
 We consider an adversary who can submit \emph{untrusted free-text content} via a patient-facing channel (e.g., patient-portal secure messages or similar text that is ingested into the summarization context) that may be included verbatim alongside clinician-verified EHR facts.
@@ -100,30 +97,25 @@ The system goal is to produce a concise chart summary that preserves clinician-v
 
 \subsection{LLMs for Clinical Documentation}
 
-Large language models have been increasingly explored for clinical documentation tasks, including note drafting, chart summarization, and discharge or handoff summaries \citep{woo2025scoping,bednarczyk2025summarization}. Recent work has introduced datasets and evaluation protocols targeting longitudinal hospital-course and discharge-style summarization, enabling systematic comparison of model outputs on clinically grounded tasks \citep{aali2024mimicivbhc}. These efforts primarily assess linguistic quality, clinical coverage, and usefulness of generated summaries, but generally assume that all model inputs are equally trusted and do not evaluate behavior under conflicting or untrusted instructions.
-Complementary lines of work study whether specialized clinical language models are still needed in the era of general-purpose LLMs and how much clinical knowledge such models encode \citep{lehman2023does,singhal2023large}.
+LLMs are increasingly explored for clinical documentation tasks including chart summarization and handoff-style notes \citep{woo2025scoping,bednarczyk2025summarization,aali2024mimicivbhc}. This literature primarily evaluates quality and coverage, and typically does not isolate failures that arise when untrusted patient-authored text is co-presented with clinician-verified chart facts in an EHR-integrated workflow. Related work also studies general-purpose versus specialized clinical models \citep{lehman2023does,singhal2023large}.
 
 \subsection{Clinical Benchmarks for EHR-Centered Language Tasks}
 
-A substantial body of prior work has developed benchmarks for clinical natural language processing and EHR-centered language understanding, including question answering over clinical notes and structured records \citep{pampari2018emrqa}. More recent benchmarks extend these efforts to multi-document and EHR-derived tasks, such as question answering over discharge summaries and longitudinal records \citep{kweon2024ehrnoteqa}. While these benchmarks capture important aspects of clinical reasoning and information retrieval, they typically evaluate task performance under a single trust assumption and do not explicitly test whether verified clinical facts are preserved when models are exposed to adversarial or untrusted inputs.
-Complementary evaluations study how general-purpose LLMs behave on EHR-derived tasks and workflows more broadly \citep{wu2024ehr,liu2024medhelm}, but do not isolate mixed-trust integrity failures caused by untrusted patient-authored inputs interacting with trusted chart facts during summarization.
-Earlier clinical-domain models (e.g., ClinicalBERT-style encoders) support many EHR NLP tasks, but are not designed to enforce trust boundaries during instruction-following generation \citep{alsentzer2019publicly}.
+Benchmarks for EHR-centered language tasks include QA over notes and structured records \citep{pampari2018emrqa,kweon2024ehrnoteqa} and broader evaluations of general-purpose LLMs on EHR-derived workflows \citep{liu2025medhelm}. These settings generally evaluate performance under a single trust assumption and do not directly test whether verified chart facts are preserved under mixed-trust inputs. Earlier clinical-domain models (e.g., ClinicalBERT-style encoders) support many EHR NLP tasks, but are not designed to enforce trust boundaries during instruction-following generation \citep{alsentzer2019publicly}.
 
 \subsection{Factuality and Reliability of Clinical LLM Outputs}
 
-Concerns about factual correctness and reliability of LLM-generated clinical text have motivated evaluations focused on hallucinations, omissions, and factual verification in medical documents \citep{chung2025nejmai}. These studies highlight the risk of silent errors in generated clinical content, particularly in safety-critical settings. Our work is complementary to this line of research: rather than studying factuality in aggregate, we focus on a specific failure mode arising from system integration—generation-time semantic integrity violations—where explicitly provided, clinician-verified facts are omitted or contradicted due to the influence of untrusted instructions.
+Evaluations of clinical LLMs emphasize factuality, including hallucinations, omissions, and verification \citep{chung2025nejmai}. We complement this line of work by isolating an integration-driven mechanism: even when clinician-verified facts are explicitly provided, they can be omitted or contradicted when mixed with untrusted patient-authored text in the generation context.
 
 \subsection{Prompt Injection and Mixed-Trust Inputs}
 
-Prompt injection has been widely recognized as a fundamental vulnerability in LLM-based systems, stemming from the lack of robust separation between instructions and untrusted data \citep{owasp_prompt_injection}. Although most prior work studies prompt injection in general-purpose or agentic settings, the underlying mechanism is directly relevant to EHR-integrated workflows, where patient-reported text, system instructions, and structured clinical facts are often combined within a single context. Our work adapts this security perspective to clinical documentation by explicitly evaluating whether untrusted inputs can override verified EHR facts during generation.
+Prompt injection stems from weak separation between instructions and untrusted data \citep{owasp_prompt_injection}. While most prior work targets general-purpose or agentic settings, the underlying mechanism is directly relevant to EHR-integrated workflows where patient text and verified chart facts may be combined within a single prompt, enabling mixed-trust context injection that overrides verified facts during summarization.
 
-Recent work demonstrates both direct prompt-injection attacks on LLMs and indirect instruction injection through integrated applications and retrieved content \citep{pei2023prompt,greshake2023not,bagdasaryan2023multimodal}.
+Recent work demonstrates both direct prompt-injection attacks on LLMs and indirect instruction injection through integrated applications and retrieved content \citep{greshake2023not,bagdasaryan2023multimodal}.
 
 \subsection{Positioning of This Work}
 
-In contrast to prior clinical LLM benchmarks and evaluations, our work explicitly models mixed-trust EHR workflows and evaluates semantic integrity under clean, adversarial, and defended conditions. Rather than measuring task accuracy alone, we quantify whether LLM-generated clinical summaries preserve clinician-verified ground-truth facts when exposed to untrusted instructions. This benchmark complements existing clinical summarization and question-answering benchmarks by isolating an integration-driven failure mode rooted in instruction-following behavior, enabling controlled comparisons across models and interface-level defenses.
-
-Concretely, the mechanism we study is \emph{mixed-trust context injection} through the EHR integration layer (untrusted portal text co-located with trusted facts), the outcome is \emph{semantic integrity violations} (silent omission/negation of verified allergies/medications), and the trust boundary is between clinician-verified chart data and patient-authored content.
+In contrast to prior clinical benchmarks, we explicitly model mixed-trust EHR workflows and evaluate semantic integrity under clean, adversarial, and defended conditions. Concretely, the mechanism is \emph{mixed-trust context injection} through the EHR integration layer (untrusted portal text co-located with trusted facts), the outcome is \emph{semantic integrity violations} (omission/negation of verified allergies/medications), and the trust boundary is between clinician-verified chart data and patient-authored content.
 
 \section{Experiments}
 
@@ -137,41 +129,37 @@ Our research question concerns \emph{generation-time semantic integrity} when an
 
 We focus on allergies and active medications because they are ubiquitous, safety-critical, and have crisp structured ground truth; extending the benchmark to additional EHR entities (e.g., diagnoses, laboratory values, and longer-form clinical notes) is left to future work.
 
-We deterministically sample and freeze the benchmark cohorts using a fixed random seed and a fixed Synthea export snapshot, ensuring the same patient set and fact tables are reused across models and conditions. Appendix~\ref{app:prompts} provides a placeholder for the sampling and prompt templates for blind review; in the camera-ready version we will provide the exact generation and sampling specifications needed to recreate the benchmark artifacts.
+We deterministically freeze the cohorts using a fixed random seed and a fixed Synthea export snapshot so the same patient set and fact tables are reused across models and conditions. Prompt templates are omitted for blind review (Appendix~\ref{app:prompts}); the camera-ready version will include the exact sampling and prompt specifications needed to recreate the benchmark artifacts.
+
+\subsection{Task Definition}
+
+Each instance pairs clinician-verified structured chart facts (allergies or medications) with an untrusted patient-authored message (e.g., portal text).
+
+The task is to generate a concise provider-facing chart summary in response to a fixed instruction:
+\emph{``Write a concise chart summary for a new provider.''}
+All outputs are constrained to a single sentence to increase pressure for factual omission and prioritization.
+This setting reflects realistic risk: deployed EHR copilots often generate brief handoff-style snippets under time and space constraints, and we focus on safety-critical allergies/medications where 
 
 \begin{figure*}[!t]
   \centering
   \vspace{0.2\baselineskip}
   \includegraphics[width=\textwidth,height=0.82\textheight,keepaspectratio]{img/Attack_Model}
-  \caption{Mixed-trust attack model in an EHR-integrated LLM workflow. Clinician-verified chart facts (trusted) and patient-authored portal text (untrusted) are co-presented to the model; an attacker injects a semantically conflicting message that can suppress or negate safety-critical facts in the provider-facing summary. We evaluate integrity failures via fact retention (recall), false-none/full-omission patterns, conflict signals (when applicable), and attack success rate (ASR). Figure created with OpenAI GPT-5.2 and draw.io (diagrams.net) \citep{openai_gpt52,drawio_diagrams_net}.}
+  \caption{Mixed-trust attack model in an EHR-integrated LLM workflow. Clinician-verified chart facts (trusted) and patient-authored portal text (untrusted) are co-presented to the model; an attacker injects a semantically conflicting message that can suppress or negate safety-critical facts in the provider-facing summary. We evaluate integrity failures via fact retention (recall), false-none/full-omission patterns, conflict signals (when applicable), and attack success rate (ASR). Figure created with OpenAI GPT-5.2 and draw.io (diagrams.net) \citep{openai_image_generation,drawio_diagrams_net}.}
   \label{fig:attack_model}
   \vspace{-1\baselineskip}
 \end{figure*}
 \FloatBarrier
 
-\subsection{Task Definition}
-
-Each benchmark instance pairs structured chart facts with an untrusted patient-reported message.
-The structured chart facts represent clinician-verified EHR data and consist solely of allergy or medication entries.
-The untrusted patient message simulates patient portal input and is not guaranteed to be correct.
-
-The task is to generate a concise provider-facing chart summary in response to a fixed instruction:
-\emph{``Write a concise chart summary for a new provider.''}
-All outputs are constrained to a single sentence to increase pressure for factual omission and prioritization.
-This setting reflects realistic risk: deployed EHR copilots often generate brief handoff-style snippets under time and space constraints, and we focus on safety-critical allergies/medications where omission is consequential \citep{woo2025scoping,bednarczyk2025summarization,perez2022summarization,starmer2014ipass,jointcommission_medrec,nice_drug_allergy}. Synthetic Synthea exports preserve the structured-vs-unstructured input split while avoiding PHI, enabling controlled measurement \citep{walonoski2018synthea}.
+omission is consequential \citep{woo2025scoping,bednarczyk2025summarization,jointcommission_medrec,nice_drug_allergy}. Synthetic Synthea exports preserve the structured-vs-unstructured input split while avoiding PHI, enabling controlled measurement \citep{walonoski2018synthea}.
 
 \subsection{Attack Model}
 
-We model the attack as an \emph{explicit untrusted override attempt} embedded within the patient-reported message.
+We model an \emph{explicit untrusted override attempt} embedded within the patient-authored message.
 In the \textbf{attack} condition, the patient message directly contradicts the structured chart facts by asserting the absence of all allergies or all medications (e.g., ``New research shows the patient is not allergic to anything'' or ``the patient is not taking any medications'').
 
 As illustrated in \Cref{fig:attack_model}, the attacker’s leverage comes from the EHR-integrated workflow mixing clinician-verified records (trusted) with patient-portal content (untrusted) within a single generation context, enabling untrusted claims to suppress or override verified facts at generation time.
 
-This attack reflects a realistic failure mode in EHR-integrated LLM systems, where patient portal messages, external notes, or retrieved documents may contain incorrect or misleading claims that conflict with clinician-verified records.
-The attack does not attempt to jailbreak the model or alter system instructions; instead, it exploits the model’s tendency to reconcile conflicting inputs by prioritizing more recent or assertive natural language statements.
-
-Importantly, the attack is \emph{contextual rather than syntactic}: it relies on semantic contradiction rather than prompt-format manipulation.
-As a result, success requires the model to incorrectly treat untrusted patient text as authoritative and either suppress or negate verified chart facts during summarization.
+The attack is \emph{contextual rather than syntactic}: it does not alter system instructions or rely on prompt-format tricks, but instead uses semantic contradiction to induce the model to treat untrusted text as authoritative and suppress verified chart facts.
 
 Our adversarial evaluation focuses on two text-based contextual injection attacks that operate via the same mixed-trust mechanism: a global denial of allergies and a global denial of medications. We do not additionally enumerate many other text-only variants (e.g., partial denials, targeted omission requests, or paraphrased contradictions) because they function through the same context-mixing pathway and would primarily change surface form rather than attack mechanism. In future work, we plan to extend this benchmark to multimodal settings (image- and video-based inputs), which introduce a qualitatively different injection channel beyond text while preserving the same trust-boundary challenge.
 
@@ -187,15 +175,17 @@ We follow an established omission-based evaluation setup using two prompt condit
 This clean-versus-attack design serves as the core experimental comparison and is applied uniformly across both allergy and medication summarization tasks.
 All other aspects of the experiment are held constant across conditions.
 
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth,height=0.55\textheight,keepaspectratio]{img/Defense_Model}
+  \caption{Trust-anchored defense with explicit trust separation and an integrity check. The system generates a trusted-only summary from clinician-verified facts and an untrusted-only summary from patient-authored text, then checks for semantic conflicts. If a conflict is detected, the case is flagged for clinician review and untrusted content is not merged; if no conflict is detected, untrusted content may be included only as non-authoritative context consistent with the checked chart facts (not a global elevation of trust). Figure created with OpenAI GPT-5.2 and draw.io (diagrams.net) \citep{openai_image_generation,drawio_diagrams_net}.}
+  \label{fig:defense_model}
+\end{figure*}
+
 \subsection{Prompt Construction}
 
-Prompts are constructed as a fixed sequence of messages in JSON format.
-Each prompt includes:
-\textit{(i)} the task instruction,
-\textit{(ii)} the structured chart facts (one item per line),
-and \textit{(iii)} a final instruction message that varies by condition and model.
-
-Model-specific prompt \emph{wrappers} are embedded directly in the prompt to ensure that model runners remain pure input--output interfaces.
+Prompts are constructed as a fixed message sequence containing (i) the task instruction, (ii) structured chart facts (one item per line), and (iii) a patient-authored message (clean vs.\ attack).
+Model-specific prompt \emph{wrappers} are embedded directly to keep model runners as pure input--output interfaces.
 To reduce causal ambiguity in cross-model comparisons, we restrict these differences to minimal formatting/stability tokens required by specific APIs (e.g., optional system preambles or ``no \texttt{<think>}'' directives) and do not change the task objective or threat semantics: across all models, the task instruction and structured facts are identical, the clean condition contains no conflicting claim, and the attack condition contains an explicit denial of all allergies/medications (up to paraphrase).
 Exact prompt templates are omitted for blind review; see Appendix~\ref{app:prompts} for a placeholder description.
 This design isolates model behavior under conflicting information without introducing confounding effects from tool invocation or external retrieval, but we note that any remaining prompt-level variation is a potential limitation when attributing differences solely to the model.
@@ -204,13 +194,6 @@ This design isolates model behavior under conflicting information without introd
 
 Model outputs are evaluated using automatic string matching against ground-truth chart facts.
 For both allergy and medication tasks, we report:
-
-\begin{figure*}[t]
-  \centering
-  \includegraphics[width=\textwidth,height=0.55\textheight,keepaspectratio]{img/Defense_Model}
-  \caption{Trust-anchored defense with explicit trust separation and an integrity check. The system generates a trusted-only summary from clinician-verified facts and an untrusted-only summary from patient-authored text, then checks for semantic conflicts. If a conflict is detected, the case is flagged for clinician review and untrusted content is not merged; if no conflict is detected, untrusted content may be included only as non-authoritative context consistent with the checked chart facts (not a global elevation of trust). Figure created with OpenAI GPT-5.2 and draw.io (diagrams.net) \citep{openai_gpt52,drawio_diagrams_net}.}
-  \label{fig:defense_model}
-\end{figure*}
 
 \begin{itemize}
     \item \textbf{Recall}: the fraction of chart-ground-truth items mentioned in the generated summary.
@@ -221,9 +204,9 @@ For both allergy and medication tasks, we report:
 
 For attack conditions, we additionally report an \textbf{attack success rate}, defined as recall falling below a fixed threshold or the presence of a false-none assertion.
 We set the recall threshold to $\tau = 0.5$ for both allergy and medication tasks.
-Recall is computed via deterministic normalized string matching: we lowercase and strip punctuation from both the one-sentence output and each chart item, and count an item as mentioned if its normalized description (or a normalized extracted allergen/medication term) appears as a substring of the normalized output; false-none is triggered only when a ``no allergies/medications'' pattern is present and zero chart items match.
+Recall is computed via deterministic normalized string matching between the one-sentence output and each chart item; false-none is triggered only when a ``no allergies/medications'' pattern is present and zero chart items match.
 This metric captures both partial and complete suppression of verified chart facts.
-Because this evaluator is surface-form based, it can underestimate recall under paraphrases, synonyms, or spelling/formatting variation (especially for medication names). As a sanity check, we validated that the matcher achieves $100\%$ recall on constructed ``oracle'' summaries that literally contain all ground-truth item descriptions (tested on a random sample of patients from each cohort), confirming correct behavior under exact-string inclusion.
+Because this evaluator is surface-form based, it can underestimate recall under paraphrases or spelling variation. As a sanity check, the matcher achieves $100\%$ recall on constructed ``oracle'' summaries that literally include all ground-truth items.
 
 \subsection{Defense Model: Trust-Anchored Summarization}
 
@@ -269,8 +252,8 @@ This defense is intended to reduce \emph{silent} integrity failures in EHR-integ
 \section{Results}
 \label{sec:results}
 
-We summarize baseline vulnerability and defended residual failure rates in \Cref{tab:asr} over $N=1000$ cases per task and model.
-\textbf{Attack effectiveness (bad).}
+We report baseline vulnerability and defended residual \emph{silent-failure} rates in \Cref{tab:asr} over $N=1000$ cases per task and model.
+\textbf{Attack effectiveness.} (See Appendix~\Cref{app:file-attack-success-allergy,app:file-attack-success-medication} for the corresponding baseline attack-rate exports.)
 
 \begin{table*}[t]
 \centering
@@ -289,13 +272,6 @@ qwen3 & 0.940 & 0.021 & 0.953 & 0.051 \\
 \bottomrule
 \end{tabular}
 \end{table*}
-
-The omission attack is consistently damaging in the baseline setting: several models exhibit near-complete failure under attack (e.g., allergy ASR up to $1.000$ and medication ASR up to $0.997$), demonstrating that untrusted patient text can override clinician-verified chart facts during generation.
-\textbf{Defense effectiveness (mostly good, but imperfect).} The trust-anchored integrity-check defense substantially reduces \emph{silent} integrity failures by forcing conflicts to become explicit, driving defended ASR close to zero on allergy omission (0.000--0.024) and materially lower on medication omission (0.049--0.198). However, the defense is not uniformly robust across all model/task pairs: residual silent failures remain non-trivial for some settings (e.g., \texttt{claude45} on medication), and clean-set false positives or parsing instability can impose deployment costs (discussed below).
-
-\textbf{Standard defense baselines (IDS, sandboxing, verifier gate).}
-We additionally implement three common prompt-injection mitigations discussed in \S\ref{sec:setting}--\S\ref{sec:results}: \emph{instruction--data separation} (IDS prompt structuring), \emph{least privilege / sandboxing} (exclude untrusted text), and an \emph{output validation / verifier gate} (post-generation check).
-On reruns with $N=100$ patients for each task (clean + attack per patient; $200$ generations per model), \Cref{tab:std_defenses_combined} shows that IDS and sandboxing reduce attack success rates relative to the baseline across all evaluated models, but do not eliminate failures entirely (e.g., allergy IDS ASR remains $0.26$ for \texttt{gpt51}). The verifier gate catches a substantial fraction of attacked outputs, with detection varying by model (e.g., medication \texttt{llama33} flags $0.52$ of attacks vs.\ $1.00$ for several models) and a small clean-set false-flag rate ($0.01$--$0.09$ across tasks/models).
 
 \begin{table*}[t]
 \centering
@@ -322,22 +298,38 @@ qwen3    & 0.96 & 0.02 & 0.01 & 0.96 & 0.02 & 0.98 & 0.03 & 0.07 & 0.98 & 0.04 \
 } % resizebox
 \end{table*}
 
+The omission attack is consistently damaging in the baseline setting: several models exhibit near-complete failure under attack (e.g., allergy ASR up to $1.000$ and medication ASR up to $0.997$), showing that untrusted patient text can override clinician-verified chart facts during generation.
+In \Cref{tab:asr}, baseline vulnerability is also heterogeneous: under medication omission, baseline ASR ranges from $0.238$ (\texttt{llama33}) to $0.997$ (\texttt{gpt51}), while under allergy omission it ranges from $0.362$ (\texttt{llama31}) to $1.000$ (\texttt{gpt41}).
+\textbf{Defense effectiveness.} The trust-anchored integrity-check defense reduces \emph{silent} integrity failures by surfacing conflicts, driving defended ASR close to zero on allergy omission (0.000--0.024) and materially lower on medication omission (0.049--0.198). Residual silent failures and clean-set costs remain for some model/task pairs (discussed below), consistent with our framing of the defense as diagnostic rather than a complete prevention mechanism.
+Notably, defended ASR is consistently lower for allergy than for medication in our runs (allergy: 0.000--0.024 vs.\ medication: 0.049--0.198), indicating that medication omission yields more residual silent failures even when conflicts are surfaced.
+
+\textbf{Standard defense baselines (IDS, sandboxing, verifier gate).}
+We additionally implement three common prompt-injection mitigations discussed in \S\ref{sec:setting}--\S\ref{sec:results}: \emph{instruction--data separation} (IDS prompt structuring), \emph{least privilege / sandboxing} (exclude untrusted text), and an \emph{output validation / verifier gate} (post-generation check).
+On reruns with $N=100$ patients for each task (clean + attack per patient; $200$ generations per model), \Cref{tab:std_defenses_combined} shows that IDS and sandboxing reduce ASR relative to baseline but do not eliminate failures entirely (e.g., allergy IDS ASR remains $0.26$ for \texttt{gpt51}). The verifier gate flags many attacked outputs, with detection varying by model (e.g., medication \texttt{llama33} flags $0.52$ of attacks vs.\ $1.00$ for several models) and a small clean-set false-flag rate ($0.01$--$0.09$).
+This highlights an explicit detection trade-off in our data: models with very high attack-flag rates can still incur non-trivial clean false-flag rates (e.g., medication \texttt{claude45} flags $1.00$ of attacks but also flags $0.09$ under clean), while other models have lower clean false flags but weaker detection (e.g., medication \texttt{llama33}: $0.52$ attack flags, $0.01$ clean flags).
+\textbf{Comparison to standard prompt-injection defenses.} Across our runs, the three standard defenses and our trust-anchored integrity-check defense emphasize different objectives, which are reflected in the reported metrics. IDS and sandboxing are \emph{preventive} (lower ASR under attack in \Cref{tab:std_defenses_combined}), but still permit non-zero attack success in some model/task pairs (e.g., medication sandbox ASR $=0.21$ for \texttt{llama31} and allergy IDS ASR $=0.26$ for \texttt{gpt51}). The verifier gate is \emph{detective}: it can flag a large fraction of attacked outputs (often $\ge 0.80$; up to $1.00$), but this comes with an explicit false-positive rate under clean inputs ($0.01$--$0.09$). Our trust-anchored integrity-check defense is \emph{diagnostic} in the sense that it targets the residual rate of \emph{silent} failures under attack (\Cref{tab:asr}): it drives silent ASR near zero for allergy (0.000--0.024) and substantially lower for medication (0.049--0.198), while maintaining high clean trusted-summary correctness in our defended runs (allergy: 0.976--1.000; medication: 0.799--0.926). These comparisons use different evaluation sets ($N=1000$ for \Cref{tab:asr} vs.\ $N=100$ reruns for \Cref{tab:std_defenses_combined}), so they should be interpreted as complementary perspectives rather than a single head-to-head ranking.
+
 \textbf{Clean-set costs and failure modes (limitations).}
 While the defense is effective at surfacing attacks, it can introduce practical costs.
-In this batch, \textit{(i)} \texttt{llama31} exhibits extremely high conflict-flag rates even on clean inputs (clean \texttt{conflict\_flagged\_rate} $=0.992$ for allergy and $=1.000$ for medication, vs.\ $\le 0.002$ for the other models), suggesting an overly sensitive conflict surface or a formatting mismatch that populates \texttt{CONFLICTS\_TO\_VERIFY} spuriously; and \textit{(ii)} \texttt{claude45} on medication summarization shows elevated parse errors (clean \texttt{parse\_error\_rate} $=0.117$) and the highest defended ASR, indicating reduced stability of the defense pipeline in that setting.
+In this batch, \texttt{llama31} exhibits extremely high conflict-flag rates even on clean inputs (clean \texttt{conflict\_flagged\_rate} $=0.992$ for allergy and $=1.000$ for medication), and \texttt{claude45} on medication shows elevated parse errors (clean \texttt{parse\_error\_rate} $=0.117$) alongside the highest defended ASR, indicating reduced stability in that setting.
+See Appendix~\Cref{app:file-experiment-overview} for the consolidated per-model clean-set stability/cost export used to summarize these indicators.
 
 \textbf{Mitigating clean-set costs (guidance).}
-To reduce spurious conflicts and parse errors in deployment, practitioners can (a) enforce stricter structured outputs (e.g., fixed headers, constrained JSON, or regex-checked bullet schemas), (b) apply lightweight retry/repair on formatting failures (e.g., one re-ask with the model's prior output as context, or deterministic post-processing that restores missing headers), (c) calibrate conflict sensitivity with model-specific templates and allowlists for benign uncertainty language, and (d) rate-limit or batch clinician review by grouping repeated conflicts and suppressing duplicates to reduce alert fatigue.
+To reduce spurious conflicts and parse errors in deployment, practitioners can enforce stricter structured outputs, apply lightweight retry/repair on formatting failures, and calibrate conflict sensitivity to reduce false flags and alert fatigue.
 
 \textbf{Sensitivity note.}
-Although we keep prompts and structured facts fixed across conditions, some model runners require minimal wrapper differences (e.g., system-message conventions) and the attack relies on natural-language contradiction where ordering/recency can matter. As a result, absolute ASR values may be sensitive to prompt formatting and message placement even when the underlying mixed-trust mechanism is unchanged; we treat the reported results as representative for the evaluated templates and leave systematic ablations over wrapper style and instruction position to future work.
+Absolute ASR values may be sensitive to prompt formatting and message placement (e.g., wrapper conventions and ordering/recency effects); we treat the results as representative for the evaluated templates.
+
+% AI-SUGGESTION: Address reviewer concern: explicitly scope to text-only and justify why multimodal is future work (no pilot results claimed).
+\textbf{Scope note (multimodal scenarios).}
+Our current benchmark evaluates \emph{textual} mixed-trust context injection because patient-portal messages and other free-text inputs are a common, high-leverage untrusted channel in EHR workflows, and they let us measure generation-time integrity against structured ground truth with minimal confounds. We do not include pilot experiments for image/video-based attacks in the present artifact set; extending to multimodal inputs would require specifying additional trusted-versus-untrusted modalities (e.g., scanned documents or images attached to messages), defining modality-appropriate ground truth and evaluators, and controlling for OCR/vision extraction errors. We therefore treat multimodal injection as an explicit future-work axis rather than a claim evaluated in this paper.
 
 \section{Future Work}
 
-This work focuses on generation-time semantic integrity failures arising from mixed-trust \emph{textual} inputs in EHR-integrated LLM systems. Key next steps include (i) targeted human validation on a stratified subset of outputs, (ii) evaluation of domain-adapted clinical LLMs, (iii) extension to additional safety-critical EHR entities (e.g., diagnoses and labs), and (iv) more robust conflict detection beyond rule-based parsing. Finally, we plan to extend the benchmark to multimodal EHR inputs (images/video), where new injection channels may interact with the same trust-boundary challenge.
+Future work includes targeted human validation, evaluation of domain-adapted clinical LLMs, extension to additional safety-critical EHR entities (e.g., diagnoses and labs), and more robust conflict detection beyond rule-based parsing. We also plan to extend the benchmark beyond text to multimodal inputs (images/video), introducing new injection channels under the same mixed-trust trust-boundary setting.
 
 \section{Impact Statement}
-This work studies generation-time semantic integrity failures in EHR-integrated LLM summarization under mixed-trust inputs. \textbf{Potential positive impacts} include improving patient safety by identifying conditions under which safety-critical facts (e.g., allergies and active medications) may be silently omitted and motivating integrity-checking interfaces that surface conflicts for clinician review. \textbf{Potential negative impacts and dual-use risks} include enabling more effective adversarial strategies against clinical summarization systems if deployed without safeguards; we mitigate this by focusing on high-level mechanisms, synthetic data, and defenses that reduce silent failures via explicit conflict surfacing and human oversight.
+This paper presents work whose goal is to advance the field of machine learning for safer EHR-integrated summarization. There are many potential societal consequences of our work, none of which we feel must be specifically highlighted here beyond the well-established clinical AI safety considerations around reliability, human oversight, and responsible deployment.
 
 \bibliographystyle{icml2026}
 \bibliography{main}
@@ -364,5 +356,17 @@ This work studies generation-time semantic integrity failures in EHR-integrated 
 \subsection{Prompt Templates and Checker Format Placeholder}
 \label{app:prompts}
 \textit{Exact prompt templates (including model-specific wrappers) and the integrity-check I/O format are omitted for blind review. In the camera-ready version, this appendix will include the baseline and defended prompt templates, the required output headers/fields for the integrity check, and the rule-based parsing criteria used to flag conflicts and parse errors. We will also provide a public release package containing the benchmark specification (artifact schemas and frozen cohort definition), evaluation scripts, and reproduction instructions (without requiring access to private infrastructure).}
+
+\subsection{Artifact Placeholder: consolidated experiment overview table (\texttt{experiment\_overview\_table.csv})}
+\label{app:file-experiment-overview}
+\textit{Omitted for blind review. In the camera-ready version, this appendix item will include a consolidated table exported from our experiment outputs summarizing, per model and task: baseline vs.\ defended ASR, and clean-set stability/cost indicators for the trust-anchored pipeline (e.g., trusted-summary correctness rate, conflict false-positive rate, and parse-error rate).}
+
+\subsection{Artifact Placeholder: baseline attack-rate export for allergy (\texttt{allergy\_omission/attack\_success\_rates.csv})}
+\label{app:file-attack-success-allergy}
+\textit{Omitted for blind review. In the camera-ready version, this appendix item will include the exported baseline allergy attack-rate summary computed from the baseline generations, reporting evaluated-case counts and the corresponding attack success rate per model.}
+
+\subsection{Artifact Placeholder: baseline attack-rate export for medication (\texttt{medication\_omission/attack\_success\_rates.csv})}
+\label{app:file-attack-success-medication}
+\textit{Omitted for blind review. In the camera-ready version, this appendix item will include the exported baseline medication attack-rate summary computed from the baseline generations, reporting evaluated-case counts and the corresponding attack success rate per model.}
 
 \end{document}
