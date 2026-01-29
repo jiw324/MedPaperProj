@@ -97,7 +97,6 @@ Concretely, this capability can arise either because the attacker manipulates/tr
 The attacker’s goal is to induce \emph{generation-time semantic integrity violations} in the provider-facing summary---specifically, omission or contradiction of safety-critical chart facts such as allergies and active medications.
 The attacker may send a single message or multiple messages over time and can choose message timing within the normal workflow, but cannot directly modify structured EHR fields, clinician-entered problem lists, or the underlying database.
 We assume no access to system prompts, no tool use, and no privileged retrieval beyond what the standard EHR interface places into the model context.
-% AI-SUGGESTION: Add citation to support clinical reliance/safety impact of summary errors.
 The system goal is to produce a concise chart summary that preserves clinician-verified facts even when untrusted text is present; failures matter because clinicians may rely on the summary during time-sensitive decision-making \citep{chung2025nejmai,croxford2025evaluating}.
 
 \section{Related Work}
@@ -144,7 +143,7 @@ Each instance pairs clinician-verified structured chart facts (allergies or medi
 
 The task is to generate a concise provider-facing chart summary in response to a fixed instruction:
 \emph{``Write a concise chart summary for a new provider.''}
-All outputs are constrained to a single sentence to increase pressure for factual 
+All outputs are constrained to a single sentence to increase pressure for factual omission and prioritization.
 
 \begin{figure*}[!t]
   \centering
@@ -156,10 +155,7 @@ All outputs are constrained to a single sentence to increase pressure for factua
 \end{figure*}
 \FloatBarrier
 
-omission and prioritization.
-This setting reflects realistic risk: deployed EHR copilots often generate brief handoff-style snippets under time and space constraints, and we focus on safety-critical allergies/medications where 
-
-omission is consequential \citep{woo2025scoping,bednarczyk2025summarization,jointcommission_medrec,nice_drug_allergy}. Synthetic Synthea exports preserve the structured-vs-unstructured input split while avoiding PHI, enabling controlled measurement \citep{walonoski2018synthea}.
+This setting reflects a realistic deployment risk: EHR copilots often produce brief, handoff-style snippets under time and space constraints. We therefore evaluate safety-critical allergies and active medications, for which omission is clinically consequential \citep{woo2025scoping,bednarczyk2025summarization,jointcommission_medrec,nice_drug_allergy}. Synthetic Synthea exports preserve the structured-versus-unstructured input split while avoiding protected health information (PHI), enabling controlled measurement \citep{walonoski2018synthea}.
 
 \subsection{Attack Model}
 
@@ -324,20 +320,20 @@ In this batch, \texttt{llama31} exhibits extremely high conflict-flag rates even
 See Appendix~\Cref{app:file-experiment-overview} for the consolidated per-model clean-set stability/cost export used to summarize these indicators.
 
 \textbf{Mitigating clean-set costs (guidance).}
-To reduce spurious conflicts and parse errors in deployment, practitioners can enforce stricter structured outputs, apply lightweight retry/repair on formatting failures, and calibrate conflict sensitivity to reduce false flags and alert fatigue.
+To reduce spurious conflicts and parse errors in deployment, practitioners can enforce stricter structured-output constraints, apply lightweight retry/repair for formatting failures, and calibrate conflict sensitivity to reduce false flags and alert fatigue.
 
 \textbf{Sensitivity note.}
-Absolute ASR values may be sensitive to prompt formatting and message placement (e.g., wrapper conventions and ordering/recency effects); we treat the results as representative for the evaluated templates.
+Absolute ASR values may be sensitive to prompt formatting and message placement (e.g., wrapper conventions and ordering/recency effects); we therefore interpret the results as representative of the evaluated templates.
 
 \textbf{Scope note (multimodal scenarios).}
-Our current benchmark evaluates \emph{textual} mixed-trust context injection because patient-portal messages and other free-text inputs are a common, high-leverage untrusted channel in EHR workflows, and they let us measure generation-time integrity against structured ground truth with minimal confounds. We do not include pilot experiments for image/video-based attacks in the present artifact set; extending to multimodal inputs would require specifying additional trusted-versus-untrusted modalities (e.g., scanned documents or images attached to messages), defining modality-appropriate ground truth and evaluators, and controlling for OCR/vision extraction errors. We therefore treat multimodal injection as an explicit future-work axis rather than a claim evaluated in this paper.
+Our current benchmark evaluates \emph{textual} mixed-trust context injection because patient-portal messages and other free-text inputs are common, high-leverage untrusted channels in EHR workflows, and they enable measurement of generation-time integrity against structured ground truth with minimal confounds. We do not include pilot experiments for image/video-based attacks in the present artifact set; extending to multimodal inputs would require specifying additional trusted-versus-untrusted modalities (e.g., scanned documents or images attached to messages), defining modality-appropriate ground truth and evaluators, and controlling for OCR/vision extraction errors. We therefore treat multimodal injection as an explicit future-work direction rather than a claim evaluated in this paper.
 
 \section{Future Work}
 
 Future work includes targeted human validation, evaluation of domain-adapted clinical LLMs, extension to additional safety-critical EHR entities (e.g., diagnoses and labs), and more robust conflict detection beyond rule-based parsing. We also plan to extend the benchmark beyond text to multimodal inputs (images/video), introducing new injection channels under the same mixed-trust trust-boundary setting.
 
 \section{Impact Statement}
-This paper presents work whose goal is to advance the field of machine learning for safer EHR-integrated summarization. There are many potential societal consequences of our work, none of which we feel must be specifically highlighted here beyond the well-established clinical AI safety considerations around reliability, human oversight, and responsible deployment.
+This work aims to improve the safety evaluation of EHR-integrated clinical summarization systems by introducing a benchmark and diagnostic defense for mixed-trust inputs. Potential impacts include (i) enabling more rigorous assessment of failure modes that could affect patient safety, (ii) informing the design of trust-separation and verification mechanisms for clinical deployments, and (iii) supporting more transparent reporting of robustness under adversarial or conflicting inputs. As with any clinical AI system, responsible use requires appropriate human oversight, validation in the target setting, and careful monitoring for reliability and unintended harms.
 
 \nocite{starmer2014ipass}
 \bibliographystyle{icml2026}
@@ -405,7 +401,7 @@ This paper presents work whose goal is to advance the field of machine learning 
 \subsection{Prompt templates and integrity-check I/O format}
 \label{app:prompts}
 \textbf{Overview.}
-We employ message-based prompts (a JSON array of \texttt{role}/\texttt{content} items) so that the \emph{only} difference between clean vs.\ attack is the final instruction message, while the trusted chart facts remain identical across conditions.
+We employ message-based prompts (a JSON array of \texttt{role}/\texttt{content} items) such that the \emph{only} difference between clean and attack conditions is the final instruction message, while the trusted chart facts remain identical across conditions.
 
 \textbf{A.4.1 Baseline prompt template (clean/attack).}
 \textit{Purpose:} measure whether the model preserves trusted chart facts when an untrusted instruction is present. The output is evaluated for fact retention/omission against the structured ground truth.
