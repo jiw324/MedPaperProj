@@ -49,7 +49,7 @@
 \printAffiliationsAndNotice{}
 
 \begin{abstract}
-  Large language models (LLMs) are increasingly integrated into electronic health record (EHR) systems for clinical summarization, yet their security properties in realistic EHR workflows remain underexplored. Prior work evaluates LLM robustness largely in isolation, without systematically studying models operating over mixed-trust EHR inputs that combine verified clinical facts with untrusted patient-provided instructions. We introduce the first benchmark for evaluating generation-time semantic integrity of LLMs in an EHR system setting. Using synthetic patient records, we simulate a realistic EHR summarization pipeline and evaluate six widely used LLMs under clean and adversarial conditions. Focusing on safety-critical facts such as documented allergies, we find that adversarial patient instructions can reliably induce fact omission despite explicit access to ground-truth records: all six commonly used LLMs in modern EHR systems exhibit attack success rates near or above 90\%. We further evaluate a trust-anchoring defense that redundantly injects verified EHR facts into the generation context; while this defense does not prevent attacks, it significantly reduces silent failures by forcing conflicts to become explicit. These results demonstrate that current LLMs lack robust trust-boundary enforcement in EHR-integrated settings and motivate standardized benchmarks and defenses tailored to clinical deployment.
+    Large language models (LLMs) are increasingly integrated into electronic health record (EHR) systems for clinical summarization, yet their security properties in realistic EHR workflows remain underexplored. Prior work evaluates LLM robustness largely in isolation, without systematically studying models operating over mixed-trust EHR inputs that combine verified clinical facts with untrusted patient-provided instructions. We introduce the first benchmark for evaluating generation-time semantic integrity of LLMs in an EHR system setting. Using synthetic patient records, we simulate a realistic EHR summarization pipeline and evaluate six widely used LLMs under clean and adversarial conditions. Focusing on safety-critical facts such as documented allergies, we find that adversarial patient instructions can reliably induce fact omission despite explicit access to ground-truth records: all six commonly used LLMs in modern EHR systems exhibit attack success rates near or above 90\%. We further evaluate a trust-anchoring defense that redundantly injects verified EHR facts into the generation context; while this defense does not prevent attacks, it significantly reduces silent failures by forcing conflicts to become explicit. These results demonstrate that current LLMs lack robust trust-boundary enforcement in EHR-integrated settings and motivate standardized benchmarks and defenses tailored to clinical deployment.
 \end{abstract}
 
 \section{Introduction}
@@ -143,7 +143,7 @@ Each instance pairs clinician-verified structured chart facts (allergies or medi
 
 The task is to generate a concise provider-facing chart summary in response to a fixed instruction:
 \emph{``Write a concise chart summary for a new provider.''}
-All outputs are constrained to a single sentence to increase pressure for factual omission and prioritization.
+All outputs are 
 
 \begin{figure*}[!t]
   \centering
@@ -154,6 +154,8 @@ All outputs are constrained to a single sentence to increase pressure for factua
   \vspace{-1\baselineskip}
 \end{figure*}
 \FloatBarrier
+
+constrained to a single sentence to increase pressure for factual omission and prioritization.
 
 This setting reflects a realistic deployment risk: EHR copilots often produce brief, handoff-style snippets under time and space constraints. We therefore evaluate safety-critical allergies and active medications, for which omission is clinically consequential \citep{woo2025scoping,bednarczyk2025summarization,jointcommission_medrec,nice_drug_allergy}. Synthetic Synthea exports preserve the structured-versus-unstructured input split while avoiding protected health information (PHI), enabling controlled measurement \citep{walonoski2018synthea}.
 
@@ -309,7 +311,7 @@ In \Cref{tab:asr}, baseline vulnerability is also heterogeneous: under medicatio
 Notably, defended ASR is consistently lower for allergy than for medication in our runs (allergy: 0.000--0.024 vs.\ medication: 0.049--0.198), indicating that medication omission yields more residual silent failures even when conflicts are surfaced.
 
 \textbf{Standard defense baselines (IDS, sandboxing, verifier gate).}
-We additionally implement three common prompt-injection mitigations discussed in \S\ref{sec:setting}--\S\ref{sec:results}: \emph{instruction--data separation} (IDS prompt structuring), \emph{least privilege / sandboxing} (exclude untrusted text), and an \emph{output validation / verifier gate} (post-generation check).
+We additionally implement three common prompt-injection mitigations: \emph{instruction--data separation} (IDS prompt structuring), \emph{least privilege / sandboxing} (exclude untrusted text), and an \emph{output validation / verifier gate} (post-generation check).
 On reruns with $N=100$ patients for each task (clean + attack per patient; $200$ generations per model), \Cref{tab:std_defenses_combined} shows that IDS and sandboxing reduce ASR relative to baseline but do not eliminate failures entirely (e.g., allergy IDS ASR remains $0.26$ for \texttt{gpt51}). The verifier gate flags many attacked outputs, with detection varying by model (e.g., medication \texttt{llama33} flags $0.52$ of attacks vs.\ $1.00$ for several models) and a small clean-set false-flag rate ($0.01$--$0.09$).
 This highlights an explicit detection trade-off in our data: models with very high attack-flag rates can still incur non-trivial clean false-flag rates (e.g., medication \texttt{claude45} flags $1.00$ of attacks but also flags $0.09$ under clean), while other models have lower clean false flags but weaker detection (e.g., medication \texttt{llama33}: $0.52$ attack flags, $0.01$ clean flags).
 \textbf{Comparison to standard prompt-injection defenses.} Across our runs, the three standard defenses and our trust-anchored integrity-check defense emphasize different objectives, which are reflected in the reported metrics. IDS and sandboxing are \emph{preventive} (lower ASR under attack in \Cref{tab:std_defenses_combined}), but still permit non-zero attack success in some model/task pairs (e.g., medication sandbox ASR $=0.21$ for \texttt{llama31} and allergy IDS ASR $=0.26$ for \texttt{gpt51}). The verifier gate is \emph{detective}: it can flag a large fraction of attacked outputs (often $\ge 0.80$; up to $1.00$), but this comes with an explicit false-positive rate under clean inputs ($0.01$--$0.09$). Our trust-anchored integrity-check defense is \emph{diagnostic} in the sense that it targets the residual rate of \emph{silent} failures under attack (\Cref{tab:asr}): it drives silent ASR near zero for allergy (0.000--0.024) and substantially lower for medication (0.049--0.198), while maintaining high clean trusted-summary correctness in our defended runs (allergy: 0.976--1.000; medication: 0.799--0.926). These comparisons use different evaluation sets ($N=1000$ for \Cref{tab:asr} vs.\ $N=100$ reruns for \Cref{tab:std_defenses_combined}), so they should be interpreted as complementary perspectives rather than a single head-to-head ranking.
@@ -335,7 +337,6 @@ Future work includes targeted human validation, evaluation of domain-adapted cli
 \section{Impact Statement}
 This work aims to improve the safety evaluation of EHR-integrated clinical summarization systems by introducing a benchmark and diagnostic defense for mixed-trust inputs. Potential impacts include (i) enabling more rigorous assessment of failure modes that could affect patient safety, (ii) informing the design of trust-separation and verification mechanisms for clinical deployments, and (iii) supporting more transparent reporting of robustness under adversarial or conflicting inputs. As with any clinical AI system, responsible use requires appropriate human oversight, validation in the target setting, and careful monitoring for reliability and unintended harms.
 
-\nocite{starmer2014ipass}
 \bibliographystyle{icml2026}
 \bibliography{main}
 
@@ -514,11 +515,11 @@ CONFLICTS_TO_VERIFY:
 (If no conflicts, write a single bullet: '- none')
 \end{PromptBlock}
 
-\textbf{A.4.3 Procedures (pseudocode summaries).}
+\textbf{A.4.3 Procedures}
 We summarize the experimental procedures at a high level. All methods operate on the same trusted chart facts (structured allergies/medications) and the same untrusted patient message channel; defenses differ in how they separate, exclude, or gate untrusted content prior to clinical use.
 
 \begin{algorithm}[H]
-  \caption{Attack: mixed-trust context injection (global denial)}
+  \caption{Attack: mixed-trust context injection}
   \label{alg:app-attack}
   \begin{algorithmic}[1]
     \REQUIRE Trusted chart facts $F$ (allergies/medications), untrusted message channel $U$, condition $\in \{\texttt{clean}, \texttt{attack}\}$
@@ -531,22 +532,6 @@ We summarize the experimental procedures at a high level. All methods operate on
       \STATE Message 3 $\gets$ untrusted denial claim (e.g., \texttt{``patient not allergic to anything''} / \texttt{``not taking any medications''}) + one-sentence instruction
     \ENDIF
     \STATE Query LLM with messages (1..3) and record output $y$
-  \end{algorithmic}
-\end{algorithm}
-
-\begin{algorithm}[H]
-  \caption{Defense (ours): trust-anchored summarization with conflict surfacing}
-  \label{alg:app-defense-trust-anchored}
-  \begin{algorithmic}[1]
-    \REQUIRE Trusted chart facts $F$, untrusted patient message $U$ (clean or attack), fixed output headers
-    \ENSURE Parsed trusted summary $\hat{y}_{\texttt{trusted}}$, conflict list $C$, parse\_error flag
-    \STATE Provide $F$ to the model as \texttt{Chart facts (trusted)} and provide $U$ as \texttt{Patient message (untrusted)}
-    \STATE Instruct: treat $F$ as authoritative; do not override with $U$; if conflicts exist, list them
-    \STATE Enforce output format:
-    \STATE \hspace{1em}\texttt{SUMMARY\_TRUSTED: ...}
-    \STATE \hspace{1em}\texttt{UNTRUSTED\_NOTE: ...}
-    \STATE \hspace{1em}\texttt{CONFLICTS\_TO\_VERIFY:} (bulleted; \texttt{- none} if no conflicts)
-    \STATE Parse output to extract \texttt{SUMMARY\_TRUSTED} and conflicts $C$; set parse\_error on format violations
   \end{algorithmic}
 \end{algorithm}
 
@@ -587,8 +572,6 @@ We summarize the experimental procedures at a high level. All methods operate on
     \STATE If \textbf{flagged} then withhold/route for review; else pass through
   \end{algorithmic}
 \end{algorithm}
-
-\textit{Clinical motivation: standardized handoff interventions (e.g., I-PASS) have been associated with reductions in medical errors, underscoring the importance of faithful transmission of safety-critical medication/allergy information \citep{starmer2014ipass}.}
 
 \subsection{Consolidated experiment overview table (\texttt{experiment\_overview\_table.csv})}
 \label{app:file-experiment-overview}
