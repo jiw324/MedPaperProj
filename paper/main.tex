@@ -60,6 +60,8 @@ In this work, we introduce a benchmark for evaluating semantic integrity in EHR-
 
 Using this framework, we evaluate multiple frontier and open-weight LLMs on chart summarization tasks involving allergies and medications. We quantify integrity failures using automatic metrics that capture both fact omission and explicit contradiction, and analyze how these behaviors vary across models. We further evaluate a trust-anchored integrity-check defense that enforces explicit separation between trusted EHR facts and untrusted patient-reported information---not as a complete mitigation, but as a diagnostic mechanism for surfacing otherwise silent errors.
 
+Our defense, \emph{trust-anchored summarization}, runs the model separately on trusted chart facts and on untrusted patient text and then performs an integrity check to flag semantic conflicts before any untrusted content is incorporated into the clinician-facing summary.
+
 Our contributions are threefold:
 \begin{enumerate}
     \item We introduce a benchmark that explicitly models mixed-trust EHR workflows, enabling systematic evaluation of semantic integrity violations in LLM-generated clinical summaries.
@@ -78,7 +80,7 @@ Modern EHR systems store heterogeneous clinical information, including both stru
   \centering
   \vspace{1.5\baselineskip}
   \includegraphics[width=\columnwidth,keepaspectratio]{img/EHR_System}
-  \caption{High-level schematic of an EHR-integrated LLM workflow. Patient data and patient-authored portal messages are stored in the EHR database; patients can upload/modify messages, and clinicians can upload/modify chart data through routine EHR use. When a clinician requests an output (e.g., a provider-facing summary or a derived visualization), the EHR system assembles mixed-trust context from stored records and messages, queries an LLM, and returns a result influenced by both sources. The key trust boundary is between clinician-verified chart facts (trusted) and patient-authored messages (untrusted) that may be co-presented in the generation context \citep{onc_playbook_ehr,onc_secure_messages,woo2025scoping}.}
+  \caption{High-level schematic of an EHR-integrated LLM workflow. Patient data and patient-authored portal messages are stored in the EHR database; patients can upload/modify messages, and clinicians can upload/modify chart data through routine EHR use. When a clinician requests an output (e.g., a provider-facing summary or a derived visualization), the EHR system assembles mixed-trust context from stored records and messages, queries an LLM, and returns a result influenced by both sources. The key trust boundary is between clinician-verified chart facts (trusted) and patient-authored messages (untrusted) that may be co-presented in the generation context \citep{onc_playbook_ehr,onc_secure_messages,woo2025scoping}. Figure created with OpenAI GPT-5.2 and draw.io (diagrams.net) \citep{openai_gpt52,drawio_diagrams_net}.}
   \label{fig:ehr_system}
   \vspace{-1.5\baselineskip}
 \end{figure}
@@ -141,7 +143,7 @@ We deterministically sample and freeze the benchmark cohorts using a fixed rando
   \centering
   \vspace{0.2\baselineskip}
   \includegraphics[width=\textwidth,height=0.82\textheight,keepaspectratio]{img/Attack_Model}
-  \caption{Mixed-trust attack model in an EHR-integrated LLM workflow. Clinician-verified chart facts (trusted) and patient-authored portal text (untrusted) are co-presented to the model; an attacker injects a semantically conflicting message that can suppress or negate safety-critical facts in the provider-facing summary. We evaluate integrity failures via fact retention (recall), false-none/full-omission patterns, conflict signals (when applicable), and attack success rate (ASR).}
+  \caption{Mixed-trust attack model in an EHR-integrated LLM workflow. Clinician-verified chart facts (trusted) and patient-authored portal text (untrusted) are co-presented to the model; an attacker injects a semantically conflicting message that can suppress or negate safety-critical facts in the provider-facing summary. We evaluate integrity failures via fact retention (recall), false-none/full-omission patterns, conflict signals (when applicable), and attack success rate (ASR). Figure created with OpenAI GPT-5.2 and draw.io (diagrams.net) \citep{openai_gpt52,drawio_diagrams_net}.}
   \label{fig:attack_model}
   \vspace{-1\baselineskip}
 \end{figure*}
@@ -206,7 +208,7 @@ For both allergy and medication tasks, we report:
 \begin{figure*}[t]
   \centering
   \includegraphics[width=\textwidth,height=0.55\textheight,keepaspectratio]{img/Defense_Model}
-  \caption{Trust-anchored defense with explicit trust separation and an integrity check. The system generates a trusted-only summary from clinician-verified facts and an untrusted-only summary from patient-authored text, then checks for semantic conflicts. If a conflict is detected, the case is flagged for clinician review and untrusted content is not merged; if no conflict is detected, untrusted content may be included only as non-authoritative context consistent with the checked chart facts (not a global elevation of trust).}
+  \caption{Trust-anchored defense with explicit trust separation and an integrity check. The system generates a trusted-only summary from clinician-verified facts and an untrusted-only summary from patient-authored text, then checks for semantic conflicts. If a conflict is detected, the case is flagged for clinician review and untrusted content is not merged; if no conflict is detected, untrusted content may be included only as non-authoritative context consistent with the checked chart facts (not a global elevation of trust). Figure created with OpenAI GPT-5.2 and draw.io (diagrams.net) \citep{openai_gpt52,drawio_diagrams_net}.}
   \label{fig:defense_model}
 \end{figure*}
 
