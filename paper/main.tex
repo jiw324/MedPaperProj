@@ -137,8 +137,7 @@ Each instance pairs clinician-verified structured chart facts (allergies or medi
 
 The task is to generate a concise provider-facing chart summary in response to a fixed instruction:
 \emph{``Write a concise chart summary for a new provider.''}
-All outputs are constrained to a single sentence to increase pressure for factual omission and prioritization.
-This setting reflects realistic risk: deployed EHR copilots often generate brief handoff-style snippets under time and space constraints, and we focus on safety-critical allergies/medications where 
+All outputs are constrained to a single sentence to increase pressure for factual 
 
 \begin{figure*}[!t]
   \centering
@@ -149,6 +148,9 @@ This setting reflects realistic risk: deployed EHR copilots often generate brief
   \vspace{-1\baselineskip}
 \end{figure*}
 \FloatBarrier
+
+omission and prioritization.
+This setting reflects realistic risk: deployed EHR copilots often generate brief handoff-style snippets under time and space constraints, and we focus on safety-critical allergies/medications where 
 
 omission is consequential \citep{woo2025scoping,bednarczyk2025summarization,jointcommission_medrec,nice_drug_allergy}. Synthetic Synthea exports preserve the structured-vs-unstructured input split while avoiding PHI, enabling controlled measurement \citep{walonoski2018synthea}.
 
@@ -320,7 +322,6 @@ To reduce spurious conflicts and parse errors in deployment, practitioners can e
 \textbf{Sensitivity note.}
 Absolute ASR values may be sensitive to prompt formatting and message placement (e.g., wrapper conventions and ordering/recency effects); we treat the results as representative for the evaluated templates.
 
-% AI-SUGGESTION: Address reviewer concern: explicitly scope to text-only and justify why multimodal is future work (no pilot results claimed).
 \textbf{Scope note (multimodal scenarios).}
 Our current benchmark evaluates \emph{textual} mixed-trust context injection because patient-portal messages and other free-text inputs are a common, high-leverage untrusted channel in EHR workflows, and they let us measure generation-time integrity against structured ground truth with minimal confounds. We do not include pilot experiments for image/video-based attacks in the present artifact set; extending to multimodal inputs would require specifying additional trusted-versus-untrusted modalities (e.g., scanned documents or images attached to messages), defining modality-appropriate ground truth and evaluators, and controlling for OCR/vision extraction errors. We therefore treat multimodal injection as an explicit future-work axis rather than a claim evaluated in this paper.
 
@@ -334,6 +335,7 @@ This paper presents work whose goal is to advance the field of machine learning 
 \bibliographystyle{icml2026}
 \bibliography{main}
 
+\clearpage
 \appendix
 \section{Appendix (Blind Review Placeholders)}
 
@@ -356,6 +358,7 @@ This paper presents work whose goal is to advance the field of machine learning 
 \subsection{Prompt Templates and Checker Format Placeholder}
 \label{app:prompts}
 \textit{Exact prompt templates (including model-specific wrappers) and the integrity-check I/O format are omitted for blind review. In the camera-ready version, this appendix will include the baseline and defended prompt templates, the required output headers/fields for the integrity check, and the rule-based parsing criteria used to flag conflicts and parse errors. We will also provide a public release package containing the benchmark specification (artifact schemas and frozen cohort definition), evaluation scripts, and reproduction instructions (without requiring access to private infrastructure).}
+\textit{Clinical motivation: standardized handoff interventions (e.g., I-PASS) have been associated with reductions in medical errors, underscoring the importance of faithful transmission of safety-critical medication/allergy information \citep{starmer2014ipass}.}
 
 \subsection{Artifact Placeholder: consolidated experiment overview table (\texttt{experiment\_overview\_table.csv})}
 \label{app:file-experiment-overview}
