@@ -9,3 +9,4 @@ Research_setup/main/src/__pycache__/
 
 # AI-SUGGESTION: Ignore large run folders (keep if you intend to version final artifacts).
 Research_setup/final/
+Research_setup/data/ 
